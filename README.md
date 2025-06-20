@@ -20,7 +20,7 @@ AI-powered git commit message generator using Google's Gemini API. Generate prof
 
 ```bash
 # Clone and install globally
-git clone <your-repo-url>
+git clone https://github.com/niellevince/smartcommit
 cd smartcommit
 npm install -g .
 
@@ -31,7 +31,7 @@ smartc
 ### Option 2: Local Usage
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/niellevince/smartcommit
 cd smartcommit
 npm install
 node index.js

@@ -512,7 +512,7 @@ SETUP:
   On first run, you'll be prompted for your Gemini API key.
   Get yours at: https://makersuite.google.com/app/apikey
 
-For more information, visit: https://github.com/your-repo/smartcommit
+For more information, visit: https://github.com/niellevince/smartcommit
         `);
     }
 
