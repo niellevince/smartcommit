@@ -69,6 +69,18 @@ smartc .
     - 🔄 Regenerate commit message
     - ❌ Cancel operation
 
+### Generation Tracking 📊
+
+Every AI generation is automatically saved to `data/generations/` with timestamps in the format `yyyy-mm-dd-hh-mm-ss.json`. These files contain:
+
+-   **Raw AI response** and **parsed commit message**
+-   **Original prompt** and **diff summary**
+-   **Repository name** and **timestamp**
+-   **Acceptance status** (updated when committed)
+-   **Model metadata** (version, model name)
+
+This provides a complete audit trail of all AI generations for quality analysis and debugging. Both accepted and rejected generations are preserved for review.
+
 ## Commit Message Format 📝
 
 SmartCommit generates commits following conventional commit standards:
