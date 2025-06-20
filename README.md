@@ -12,6 +12,7 @@ AI-powered git commit message generator using Google's Gemini API. Generate prof
 -   **Auto-staging**: Automatically stages all changes before committing
 -   **Smart Push**: Handles upstream branch setup automatically
 -   **Generation Tracking**: Saves every AI generation to `data/generations` with timestamps
+-   **Complete Generation History**: All AI generations are preserved, whether accepted or rejected
 
 ## Installation 📦
 
