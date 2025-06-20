@@ -189,109 +189,117 @@ class SmartCommit {
         return binaryExtensions.includes(ext);
     }
 
-    formatDiffForAI(diffData) {
-        const { status, stagedDiff, unstagedDiff, files, fileContents } = diffData;
+    getStatusDescription(index, workingDir) {
+        const statusMap = {
+            'A': 'Added',
+            'M': 'Modified',
+            'D': 'Deleted',
+            'R': 'Renamed',
+            'C': 'Copied',
+            'U': 'Unmerged',
+            '?': 'Untracked',
+            '!': 'Ignored'
+        };
 
-        let summary = `Files changed (${files.length}):\n`;
-        files.forEach(file => {
-            const statusSymbols = [];
-            if (file.index) statusSymbols.push(file.index);
-            if (file.working_dir) statusSymbols.push(file.working_dir);
-            summary += `- ${file.path} [${statusSymbols.join(', ')}]\n`;
-        });
-
-        let fullDiff = '';
-        if (stagedDiff) {
-            fullDiff += '\n=== STAGED CHANGES ===\n' + stagedDiff;
+        const descriptions = [];
+        if (index && statusMap[index]) {
+            descriptions.push(`Staged: ${statusMap[index]}`);
         }
-        if (unstagedDiff) {
-            fullDiff += '\n=== UNSTAGED CHANGES ===\n' + unstagedDiff;
-        }
-
-        // Add full file contents for better context
-        let fileContentsSection = '\n=== COMPLETE FILE CONTENTS ===\n';
-        for (const [filepath, content] of Object.entries(fileContents)) {
-            fileContentsSection += `\n--- ${filepath} ---\n`;
-            if (typeof content === 'string' && content.startsWith('[')) {
-                fileContentsSection += content + '\n';
-            } else {
-                // Limit content to prevent extremely long prompts (max 2000 chars per file)
-                const truncatedContent = content.length > 2000
-                    ? content.substring(0, 2000) + '\n\n[Content truncated - showing first 2000 characters]'
-                    : content;
-                fileContentsSection += truncatedContent + '\n';
-            }
+        if (workingDir && statusMap[workingDir]) {
+            descriptions.push(`Working: ${statusMap[workingDir]}`);
         }
 
-        return { summary, fullDiff, fileContentsSection };
+        return descriptions.length > 0 ? descriptions.join(', ') : 'Unknown';
     }
 
-    buildPrompt(diffData, history) {
-        const { summary, fullDiff, fileContentsSection } = this.formatDiffForAI(diffData);
 
-        let contextHistory = '';
-        if (history.length > 0) {
-            const recentCommits = history.slice(-3);
-            contextHistory = '\n\nRecent commit history for context:\n';
-            recentCommits.forEach((commit, index) => {
-                contextHistory += `${index + 1}. ${commit.summary}\n`;
-                if (commit.description) {
-                    contextHistory += `   ${commit.description.split('\n')[0]}\n`;
+
+    buildStructuredRequest(diffData, history) {
+        const { files, fileContents } = diffData;
+
+        // Build recent commit history
+        const recentCommits = history.slice(-3).map(commit => ({
+            summary: commit.summary,
+            description: commit.description ? commit.description.split('\n')[0] : null,
+            type: commit.type || null,
+            scope: commit.scope || null,
+            timestamp: commit.timestamp
+        }));
+
+        // Build files with their content and diff
+        const filesData = {};
+        files.forEach(file => {
+            const content = fileContents[file.path] || '[Unable to read file]';
+
+            // Limit content to prevent extremely long prompts (max 2000 chars per file)
+            const truncatedContent = content && content.length > 2000
+                ? content.substring(0, 2000) + '\n\n[Content truncated - showing first 2000 characters]'
+                : content;
+
+            filesData[file.path] = {
+                status: {
+                    index: file.index || null,
+                    workingDir: file.working_dir || null,
+                    statusDescription: this.getStatusDescription(file.index, file.working_dir)
+                },
+                content: truncatedContent,
+                path: file.path,
+                isBinary: this.isBinaryFile(file.path),
+                size: content ? content.length : 0
+            };
+        });
+
+        // Build the structured request
+        const structuredRequest = {
+            instructions: {
+                task: "Generate a professional git commit message based on the provided code changes",
+                format: "Return a JSON object with the specified structure",
+                guidelines: [
+                    "Use conventional commit types: feat, fix, docs, style, refactor, test, chore",
+                    "Keep summary under 50 characters",
+                    "Use present tense ('add' not 'added')",
+                    "Be specific about what changed",
+                    "Explain the 'why' in the description",
+                    "Focus on the business value or problem solved",
+                    "Analyze the full file contents to understand the complete context",
+                    "Set 'breaking' to true only for breaking changes",
+                    "Include issue numbers in 'issues' array if this fixes any issues"
+                ],
+                outputFormat: {
+                    summary: "<type>(<scope>): <description>",
+                    description: "<detailed explanation of what was changed and why>",
+                    changes: ["<specific change 1>", "<specific change 2>", "<specific change 3>"],
+                    type: "<commit type>",
+                    scope: "<commit scope>",
+                    breaking: false,
+                    issues: ["<issue-number>"]
                 }
-            });
-        }
+            },
+            context: {
+                repository: this.getRepoName(process.cwd()),
+                changedFilesCount: files.length,
+                recentCommits: recentCommits
+            },
+            diff: {
+                staged: diffData.stagedDiff || '',
+                unstaged: diffData.unstagedDiff || ''
+            },
+            files: filesData
+        };
 
-        return `You are an expert software developer creating professional git commit messages. 
-
-Based on the following git changes, generate a commit message as a JSON object with this EXACT structure:
-
-{
-  "summary": "<type>(<scope>): <description>",
-  "description": "<detailed explanation of what was changed and why>",
-  "changes": [
-    "<specific change 1>",
-    "<specific change 2>",
-    "<specific change 3>"
-  ],
-  "type": "<commit type>",
-  "scope": "<commit scope>",
-  "breaking": false,
-  "issues": ["<issue-number>"]
-}
-
-Guidelines:
-- Use conventional commit types: feat, fix, docs, style, refactor, test, chore
-- Keep summary under 50 characters
-- Use present tense ("add" not "added")
-- Be specific about what changed
-- Explain the "why" in the description
-- Focus on the business value or problem solved
-- Analyze the full file contents to understand the complete context
-- Set "breaking" to true only for breaking changes
-- Include issue numbers in "issues" array if this fixes any issues
-- Return ONLY valid JSON, no additional text
-
-Git Changes:
-${summary}${contextHistory}
-
-Detailed diff:
-${fullDiff}
-
-${fileContentsSection}
-
-Respond with JSON only:`;
+        return JSON.stringify(structuredRequest, null, 2);
     }
 
     async generateCommitMessage(diffData, history, apiKey, repoName) {
         try {
             const genAI = new GoogleGenAI({ apiKey: apiKey });
-            const prompt = this.buildPrompt(diffData, history);
+            const structuredRequest = this.buildStructuredRequest(diffData, history);
 
             console.log('🤖 Generating commit message with Gemini AI...\n');
 
             const result = await genAI.models.generateContent({
                 model: 'gemini-2.0-flash-001',
-                contents: prompt
+                contents: structuredRequest
             });
 
             const text = result.text;
@@ -301,8 +309,7 @@ Respond with JSON only:`;
             const generationData = {
                 rawResponse: text,
                 parsedMessage: parsedMessage,
-                prompt: prompt,
-                diffSummary: this.formatDiffForAI(diffData).summary,
+                structuredRequest: JSON.parse(structuredRequest),
                 fileCount: diffData.files.length,
                 changedFiles: diffData.files.map(f => f.path)
             };
