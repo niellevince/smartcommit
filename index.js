@@ -243,19 +243,21 @@ class SmartCommit {
 
         return `You are an expert software developer creating professional git commit messages. 
 
-Based on the following git changes, generate a commit message in this EXACT format:
+Based on the following git changes, generate a commit message as a JSON object with this EXACT structure:
 
-Summary:
-<type>(<scope>): <description>
-
-Description:
-<detailed explanation of what was changed and why>
-
-- <specific change 1>
-- <specific change 2>
-- <specific change 3 if applicable>
-
-<include "Closes #<issue-number>" if this appears to fix an issue>
+{
+  "summary": "<type>(<scope>): <description>",
+  "description": "<detailed explanation of what was changed and why>",
+  "changes": [
+    "<specific change 1>",
+    "<specific change 2>",
+    "<specific change 3>"
+  ],
+  "type": "<commit type>",
+  "scope": "<commit scope>",
+  "breaking": false,
+  "issues": ["<issue-number>"]
+}
 
 Guidelines:
 - Use conventional commit types: feat, fix, docs, style, refactor, test, chore
@@ -265,6 +267,9 @@ Guidelines:
 - Explain the "why" in the description
 - Focus on the business value or problem solved
 - Analyze the full file contents to understand the complete context
+- Set "breaking" to true only for breaking changes
+- Include issue numbers in "issues" array if this fixes any issues
+- Return ONLY valid JSON, no additional text
 
 Git Changes:
 ${summary}${contextHistory}
@@ -274,7 +279,7 @@ ${fullDiff}
 
 ${fileContentsSection}
 
-Generate the commit message now:`;
+Respond with JSON only:`;
     }
 
     async generateCommitMessage(diffData, history, apiKey, repoName) {
@@ -313,64 +318,99 @@ Generate the commit message now:`;
     }
 
     parseCommitMessage(aiResponse) {
-        const lines = aiResponse.trim().split('\n');
-        let summary = '';
-        let description = '';
-        let inDescription = false;
-        let foundSummarySection = false;
+        try {
+            // Clean the response - remove any markdown code blocks if present
+            let cleanedResponse = aiResponse.trim();
 
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-
-            if (line.startsWith('Summary:')) {
-                foundSummarySection = true;
-                // Get the next non-empty line as the summary
-                for (let j = i + 1; j < lines.length; j++) {
-                    const nextLine = lines[j].trim();
-                    if (nextLine && !nextLine.startsWith('Description:')) {
-                        summary = nextLine;
-                        break;
-                    }
-                }
-            } else if (line.startsWith('Description:')) {
-                inDescription = true;
-                // Collect all lines after Description: until end
-                for (let j = i + 1; j < lines.length; j++) {
-                    const descLine = lines[j];
-                    if (descLine.trim()) {
-                        description += descLine + '\n';
-                    }
-                }
-                break;
+            // Remove code block markers if present
+            if (cleanedResponse.startsWith('```json')) {
+                cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanedResponse.startsWith('```')) {
+                cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
             }
-        }
 
-        // If no structured format found, try to extract first meaningful line as summary
-        if (!foundSummarySection || !summary) {
+            // Parse JSON response
+            const parsed = JSON.parse(cleanedResponse);
+
+            // Build description with changes if provided
+            let description = parsed.description || '';
+            if (parsed.changes && Array.isArray(parsed.changes) && parsed.changes.length > 0) {
+                description += '\n\n' + parsed.changes.map(change => `- ${change}`).join('\n');
+            }
+
+            // Add issue references if provided
+            if (parsed.issues && Array.isArray(parsed.issues) && parsed.issues.length > 0) {
+                const issueRefs = parsed.issues.map(issue => `Closes #${issue}`).join(', ');
+                description += '\n\n' + issueRefs;
+            }
+
+            return {
+                summary: parsed.summary || 'chore: update files',
+                description: description.trim(),
+                type: parsed.type || 'chore',
+                scope: parsed.scope || null,
+                breaking: parsed.breaking || false,
+                issues: parsed.issues || [],
+                changes: parsed.changes || []
+            };
+
+        } catch (error) {
+            console.log('⚠️  Failed to parse JSON response, falling back to text parsing...');
+
+            // Fallback to basic text parsing if JSON parsing fails
+            const lines = aiResponse.trim().split('\n');
+            let summary = '';
+            let description = '';
+
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (trimmed &&
-                    !trimmed.startsWith('Summary:') &&
-                    !trimmed.startsWith('Description:') &&
-                    !trimmed.startsWith('Based on') &&
-                    !trimmed.startsWith('Generate') &&
+                    !trimmed.startsWith('{') &&
+                    !trimmed.startsWith('}') &&
+                    !trimmed.startsWith('"') &&
+                    !trimmed.includes('JSON') &&
                     trimmed.length > 10) {
-                    summary = trimmed;
-                    break;
+                    if (!summary) {
+                        summary = trimmed;
+                    } else {
+                        description += trimmed + '\n';
+                    }
                 }
             }
-        }
 
-        return {
-            summary: summary || 'chore: update files',
-            description: description.trim() || aiResponse.trim()
-        };
+            return {
+                summary: summary || 'chore: update files',
+                description: description.trim() || 'Various updates and improvements',
+                type: 'chore',
+                scope: null,
+                breaking: false,
+                issues: [],
+                changes: []
+            };
+        }
     }
 
-    async confirmCommit(summary, description) {
+    async confirmCommit(commitData) {
+        const { summary, description, type, scope, breaking, issues, changes } = commitData;
+
         console.log('📝 Generated Commit Message:\n');
         console.log(`Summary: ${summary}`);
-        console.log(`\nDescription:\n${description}\n`);
+        console.log(`Type: ${type}${scope ? ` | Scope: ${scope}` : ''}${breaking ? ' | ⚠️ BREAKING CHANGE' : ''}`);
+
+        if (changes && changes.length > 0) {
+            console.log(`\nChanges:`);
+            changes.forEach(change => console.log(`  - ${change}`));
+        }
+
+        if (description) {
+            console.log(`\nDescription:\n${description}`);
+        }
+
+        if (issues && issues.length > 0) {
+            console.log(`\nIssues: ${issues.map(issue => `#${issue}`).join(', ')}`);
+        }
+
+        console.log(); // Empty line
 
         const { action } = await inquirer.prompt([
             {
@@ -514,27 +554,31 @@ For more information, visit: https://github.com/your-repo/smartcommit
                 attempts++;
 
                 try {
-                    const { summary, description, generationFilename } = await this.generateCommitMessage(
+                    const commitData = await this.generateCommitMessage(
                         diffData,
                         history,
                         config.GEMINI_API_KEY,
                         repoName
                     );
 
-                    const action = await this.confirmCommit(summary, description);
+                    const action = await this.confirmCommit(commitData);
 
                     if (action === 'commit') {
                         // Update generation status to accepted
-                        this.updateGenerationStatus(generationFilename, true);
+                        this.updateGenerationStatus(commitData.generationFilename, true);
 
-                        const success = await this.commitAndPush(git, summary, description);
+                        const success = await this.commitAndPush(git, commitData.summary, commitData.description);
 
                         if (success) {
                             // Save to history
                             const commitRecord = {
                                 timestamp: new Date().toISOString(),
-                                summary,
-                                description,
+                                summary: commitData.summary,
+                                description: commitData.description,
+                                type: commitData.type,
+                                scope: commitData.scope,
+                                breaking: commitData.breaking,
+                                issues: commitData.issues,
                                 files: diffData.files.map(f => f.path)
                             };
 

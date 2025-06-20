@@ -82,7 +82,10 @@ Every AI generation is automatically saved to `data/generations/` with timestamp
 
 This provides a complete audit trail of all AI generations for quality analysis and debugging. Both accepted and rejected generations are preserved for review.
 
-**Recent Improvements**: Fixed commit message parsing and added full file content analysis for better AI context.
+**Recent Improvements**:
+
+-   Fixed commit message parsing and added full file content analysis for better AI context
+-   Implemented structured JSON responses for more reliable parsing and enhanced metadata
 
 ## Commit Message Format 📝
 
