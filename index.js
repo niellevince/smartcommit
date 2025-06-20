@@ -131,19 +131,66 @@ class SmartCommit {
             const diff = await git.diff(['--cached']);
             const diffAll = await git.diff();
 
+            // Get full file contents for context
+            const fileContents = await this.getFileContents(status.files);
+
             return {
                 status,
                 stagedDiff: diff,
                 unstagedDiff: diffAll,
-                files: status.files
+                files: status.files,
+                fileContents
             };
         } catch (error) {
             throw new Error(`Git operation failed: ${error.message}`);
         }
     }
 
+    async getFileContents(files) {
+        const contents = {};
+
+        for (const file of files) {
+            try {
+                // Only get contents for text files and limit size
+                const filepath = file.path;
+                const stats = fs.statSync(filepath);
+
+                // Skip binary files and very large files (>100KB)
+                if (stats.size > 100 * 1024) {
+                    contents[filepath] = `[File too large: ${Math.round(stats.size / 1024)}KB]`;
+                    continue;
+                }
+
+                // Check if file is likely binary
+                if (this.isBinaryFile(filepath)) {
+                    contents[filepath] = `[Binary file]`;
+                    continue;
+                }
+
+                const content = fs.readFileSync(filepath, 'utf8');
+                contents[filepath] = content;
+            } catch (error) {
+                contents[file.path] = `[Error reading file: ${error.message}]`;
+            }
+        }
+
+        return contents;
+    }
+
+    isBinaryFile(filepath) {
+        const binaryExtensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.ico',
+            '.mp3', '.wav', '.mp4', '.avi', '.mov', '.pdf', '.zip',
+            '.tar', '.gz', '.exe', '.dll', '.so', '.dylib', '.bin',
+            '.obj', '.o', '.a', '.lib', '.class', '.jar'
+        ];
+
+        const ext = path.extname(filepath).toLowerCase();
+        return binaryExtensions.includes(ext);
+    }
+
     formatDiffForAI(diffData) {
-        const { status, stagedDiff, unstagedDiff, files } = diffData;
+        const { status, stagedDiff, unstagedDiff, files, fileContents } = diffData;
 
         let summary = `Files changed (${files.length}):\n`;
         files.forEach(file => {
@@ -161,11 +208,26 @@ class SmartCommit {
             fullDiff += '\n=== UNSTAGED CHANGES ===\n' + unstagedDiff;
         }
 
-        return { summary, fullDiff };
+        // Add full file contents for better context
+        let fileContentsSection = '\n=== COMPLETE FILE CONTENTS ===\n';
+        for (const [filepath, content] of Object.entries(fileContents)) {
+            fileContentsSection += `\n--- ${filepath} ---\n`;
+            if (typeof content === 'string' && content.startsWith('[')) {
+                fileContentsSection += content + '\n';
+            } else {
+                // Limit content to prevent extremely long prompts (max 2000 chars per file)
+                const truncatedContent = content.length > 2000
+                    ? content.substring(0, 2000) + '\n\n[Content truncated - showing first 2000 characters]'
+                    : content;
+                fileContentsSection += truncatedContent + '\n';
+            }
+        }
+
+        return { summary, fullDiff, fileContentsSection };
     }
 
     buildPrompt(diffData, history) {
-        const { summary, fullDiff } = this.formatDiffForAI(diffData);
+        const { summary, fullDiff, fileContentsSection } = this.formatDiffForAI(diffData);
 
         let contextHistory = '';
         if (history.length > 0) {
@@ -202,12 +264,15 @@ Guidelines:
 - Be specific about what changed
 - Explain the "why" in the description
 - Focus on the business value or problem solved
+- Analyze the full file contents to understand the complete context
 
 Git Changes:
 ${summary}${contextHistory}
 
 Detailed diff:
 ${fullDiff}
+
+${fileContentsSection}
 
 Generate the commit message now:`;
     }
@@ -232,7 +297,9 @@ Generate the commit message now:`;
                 rawResponse: text,
                 parsedMessage: parsedMessage,
                 prompt: prompt,
-                diffSummary: this.formatDiffForAI(diffData).summary
+                diffSummary: this.formatDiffForAI(diffData).summary,
+                fileCount: diffData.files.length,
+                changedFiles: diffData.files.map(f => f.path)
             };
             const generationFilename = this.saveGeneration(repoName, generationData, false);
 
@@ -250,20 +317,53 @@ Generate the commit message now:`;
         let summary = '';
         let description = '';
         let inDescription = false;
+        let foundSummarySection = false;
 
-        for (const line of lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
             if (line.startsWith('Summary:')) {
-                summary = line.replace('Summary:', '').trim();
+                foundSummarySection = true;
+                // Get the next non-empty line as the summary
+                for (let j = i + 1; j < lines.length; j++) {
+                    const nextLine = lines[j].trim();
+                    if (nextLine && !nextLine.startsWith('Description:')) {
+                        summary = nextLine;
+                        break;
+                    }
+                }
             } else if (line.startsWith('Description:')) {
                 inDescription = true;
-            } else if (inDescription && line.trim()) {
-                description += line + '\n';
+                // Collect all lines after Description: until end
+                for (let j = i + 1; j < lines.length; j++) {
+                    const descLine = lines[j];
+                    if (descLine.trim()) {
+                        description += descLine + '\n';
+                    }
+                }
+                break;
+            }
+        }
+
+        // If no structured format found, try to extract first meaningful line as summary
+        if (!foundSummarySection || !summary) {
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed &&
+                    !trimmed.startsWith('Summary:') &&
+                    !trimmed.startsWith('Description:') &&
+                    !trimmed.startsWith('Based on') &&
+                    !trimmed.startsWith('Generate') &&
+                    trimmed.length > 10) {
+                    summary = trimmed;
+                    break;
+                }
             }
         }
 
         return {
             summary: summary || 'chore: update files',
-            description: description.trim() || 'Various updates and improvements'
+            description: description.trim() || aiResponse.trim()
         };
     }
 
