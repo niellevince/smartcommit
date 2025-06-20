@@ -351,6 +351,48 @@ smartc config test-model "claude-3-sonnet"
 -   **Local Privacy**: Use local Ollama models for sensitive repositories
 -   **Enterprise**: Use Azure/AWS hosted models for corporate compliance
 
+### **📍 Smart Context Extraction**
+
+**`--context-radius N`** - Include only relevant code context around changes
+
+```bash
+smartc --context-radius 3
+# Include 3 lines before and after each changed line
+
+smartc --context-radius 10
+# Larger context for complex changes
+
+smartc --full-context
+# Fallback to current behavior (entire file contents)
+```
+
+**How Context Radius Works:**
+
+```bash
+# Instead of sending entire file (2000+ lines):
+# Original approach: [ENTIRE FILE CONTENT]
+
+# Smart approach: Only relevant snippets
+Line 47-53: (context around changed line 50)
+Line 120-126: (context around changed line 123)
+Line 200-210: (context around changed lines 205-207)
+```
+
+**Intelligent Context Features:**
+
+-   **Function Boundaries**: Automatically extend context to include complete functions
+-   **Smart Merging**: Overlapping contexts get combined into single blocks
+-   **Syntax Awareness**: Respect code structure (classes, methods, blocks)
+-   **Adaptive Radius**: Larger radius for complex changes, smaller for simple edits
+
+**Performance Benefits:**
+
+-   **🚀 Faster API Calls**: Smaller prompts = faster generation
+-   **💰 Cost Reduction**: Fewer tokens = lower AI costs
+-   **🎯 Better Focus**: AI sees only relevant code context
+-   **⚡ Improved Accuracy**: Less noise, more signal for AI analysis
+-   **📊 Scalable**: Works efficiently with large files (10k+ lines)
+
 ---
 
 ## Support 💬
