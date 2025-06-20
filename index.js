@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require('fs');
 const path = require('path');
 const inquirer = require('inquirer');
@@ -649,4 +651,4 @@ if (require.main === module) {
 }
 
 module.exports = SmartCommit;
-// Testing additional context feature
+// Test comment
