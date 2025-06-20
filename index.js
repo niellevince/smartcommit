@@ -212,7 +212,7 @@ class SmartCommit {
 
 
 
-    buildStructuredRequest(diffData, history) {
+    buildStructuredRequest(diffData, history, additionalContext = null) {
         const { files, fileContents } = diffData;
 
         // Build recent commit history
@@ -261,8 +261,9 @@ class SmartCommit {
                     "Focus on the business value or problem solved",
                     "Analyze the full file contents to understand the complete context",
                     "Set 'breaking' to true only for breaking changes",
-                    "Include issue numbers in 'issues' array if this fixes any issues"
-                ],
+                    "Include issue numbers in 'issues' array if this fixes any issues",
+                    additionalContext ? "Pay special attention to the additional context provided by the user" : null
+                ].filter(Boolean),
                 outputFormat: {
                     summary: "<type>(<scope>): <description>",
                     description: "<detailed explanation of what was changed and why>",
@@ -276,7 +277,8 @@ class SmartCommit {
             context: {
                 repository: this.getRepoName(process.cwd()),
                 changedFilesCount: files.length,
-                recentCommits: recentCommits
+                recentCommits: recentCommits,
+                additionalContext: additionalContext
             },
             diff: {
                 staged: diffData.stagedDiff || '',
@@ -288,10 +290,10 @@ class SmartCommit {
         return JSON.stringify(structuredRequest, null, 2);
     }
 
-    async generateCommitMessage(diffData, history, apiKey, repoName) {
+    async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null) {
         try {
             const genAI = new GoogleGenAI({ apiKey: apiKey });
-            const structuredRequest = this.buildStructuredRequest(diffData, history);
+            const structuredRequest = this.buildStructuredRequest(diffData, history, additionalContext);
 
             console.log('🤖 Generating commit message with Gemini AI...\n');
 
@@ -480,14 +482,21 @@ class SmartCommit {
 🚀 SmartCommit - AI-Powered Git Commit Generator
 
 USAGE:
-  smartc [path]                 Generate AI commit for repository at path
-  smartc                        Generate AI commit for current directory
-  smartc --help, -h             Show this help message
+  smartc [path]                           Generate AI commit for repository at path
+  smartc                                  Generate AI commit for current directory
+  smartc --additional "context info"     Include additional context for AI
+  smartc --help, -h                       Show this help message
+
+OPTIONS:
+  --additional "text"                     Provide additional context to help AI generate
+                                         more accurate commit messages
 
 EXAMPLES:
-  smartc                        # Commit changes in current directory
-  smartc .                      # Commit changes in current directory
-  smartc /path/to/repo          # Commit changes in specific repository
+  smartc                                  # Commit changes in current directory
+  smartc .                                # Commit changes in current directory
+  smartc /path/to/repo                    # Commit changes in specific repository
+  smartc --additional "Fixed bug #123"    # Include extra context for AI
+  smartc . --additional "Refactoring"     # Combine path and context
 
 FEATURES:
   ✨ AI-generated commit messages using Gemini API
@@ -495,6 +504,7 @@ FEATURES:
   🔄 Interactive confirmation with regeneration option
   📚 Learns from your commit history for better context
   🚀 Automatic staging and pushing
+  📋 Additional context support for better accuracy
 
 SETUP:
   On first run, you'll be prompted for your Gemini API key.
@@ -512,6 +522,15 @@ For more information, visit: https://github.com/your-repo/smartcommit
             if (args.includes('--help') || args.includes('-h')) {
                 this.showHelp();
                 return;
+            }
+
+            // Parse additional context flag
+            let additionalContext = null;
+            const additionalIndex = args.findIndex(arg => arg === '--additional');
+            if (additionalIndex !== -1 && args[additionalIndex + 1]) {
+                additionalContext = args[additionalIndex + 1];
+                // Remove the flag and its value from args
+                args.splice(additionalIndex, 2);
             }
 
             const targetPath = args[0] || '.';
@@ -535,7 +554,11 @@ For more information, visit: https://github.com/your-repo/smartcommit
             const history = this.loadHistory(repoName);
 
             console.log(`📂 Repository: ${repoName}`);
-            console.log(`📍 Path: ${path.resolve(targetPath)}\n`);
+            console.log(`📍 Path: ${path.resolve(targetPath)}`);
+            if (additionalContext) {
+                console.log(`📋 Additional context: "${additionalContext}"`);
+            }
+            console.log();
 
             // Check for changes
             console.log('🔍 Checking for changes...');
@@ -563,7 +586,8 @@ For more information, visit: https://github.com/your-repo/smartcommit
                         diffData,
                         history,
                         config.GEMINI_API_KEY,
-                        repoName
+                        repoName,
+                        additionalContext
                     );
 
                     const action = await this.confirmCommit(commitData);
@@ -625,3 +649,4 @@ if (require.main === module) {
 }
 
 module.exports = SmartCommit;
+// Testing additional context feature
