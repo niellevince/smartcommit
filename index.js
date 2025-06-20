@@ -651,4 +651,3 @@ if (require.main === module) {
 }
 
 module.exports = SmartCommit;
-// Test comment
