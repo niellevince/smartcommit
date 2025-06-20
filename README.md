@@ -298,6 +298,59 @@ smartc --scope "auth"
 # Forces scope to "auth" in conventional commit format
 ```
 
+### **🤖 Multi-Provider AI Support**
+
+**`--model "model-name"`** - Choose specific AI models
+
+```bash
+smartc --model "gemini-2.0-flash-exp"
+# Use experimental Gemini model
+
+smartc --model "gemini-1.5-pro"
+# Use Gemini Pro for more complex analysis
+
+smartc --model "claude-3-sonnet"
+# Use Anthropic Claude (when supported)
+```
+
+**`--provider "provider-name"`** - Switch between AI providers
+
+```bash
+smartc --provider "openai"
+# Use OpenAI GPT models
+
+smartc --provider "anthropic"
+# Use Anthropic Claude models
+
+smartc --provider "ollama"
+# Use local Ollama models
+
+smartc --provider "azure"
+# Use Azure OpenAI Service
+```
+
+**Configuration Support:**
+
+```bash
+# Set default model/provider
+smartc config set-model "gemini-2.0-flash-exp"
+smartc config set-provider "anthropic"
+
+# List available models
+smartc config list-models
+
+# Test model performance
+smartc config test-model "claude-3-sonnet"
+```
+
+**Multi-Provider Benefits:**
+
+-   **Cost Optimization**: Choose cheaper models for simple commits
+-   **Quality Control**: Use premium models for complex changes
+-   **Redundancy**: Fallback to different providers if one is down
+-   **Local Privacy**: Use local Ollama models for sensitive repositories
+-   **Enterprise**: Use Azure/AWS hosted models for corporate compliance
+
 ---
 
 ## Support 💬
