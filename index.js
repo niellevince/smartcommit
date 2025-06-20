@@ -10,12 +10,16 @@ class SmartCommit {
     constructor() {
         this.dataDir = path.join(__dirname, 'data');
         this.configPath = path.join(this.dataDir, 'config.json');
+        this.generationsDir = path.join(this.dataDir, 'generations');
         this.ensureDataDir();
     }
 
     ensureDataDir() {
         if (!fs.existsSync(this.dataDir)) {
             fs.mkdirSync(this.dataDir, { recursive: true });
+        }
+        if (!fs.existsSync(this.generationsDir)) {
+            fs.mkdirSync(this.generationsDir, { recursive: true });
         }
     }
 
@@ -82,6 +86,38 @@ class SmartCommit {
     saveHistory(repoName, history) {
         const historyPath = this.getHistoryPath(repoName);
         fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
+    }
+
+    saveGeneration(repoName, generation, accepted = false) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '-').slice(0, 19);
+        const filename = `${timestamp}.json`;
+        const generationPath = path.join(this.generationsDir, filename);
+
+        const generationData = {
+            timestamp: new Date().toISOString(),
+            repository: repoName,
+            accepted: accepted,
+            generation: generation,
+            metadata: {
+                model: 'gemini-2.0-flash-001',
+                version: '1.0.0'
+            }
+        };
+
+        fs.writeFileSync(generationPath, JSON.stringify(generationData, null, 2));
+        console.log(`💾 Generation saved to: ${filename}`);
+        return filename; // Return filename for later reference
+    }
+
+    updateGenerationStatus(filename, accepted = true) {
+        const generationPath = path.join(this.generationsDir, filename);
+        if (fs.existsSync(generationPath)) {
+            const data = JSON.parse(fs.readFileSync(generationPath, 'utf8'));
+            data.accepted = accepted;
+            data.acceptedAt = new Date().toISOString();
+            fs.writeFileSync(generationPath, JSON.stringify(data, null, 2));
+            console.log(`✅ Generation status updated: ${filename}`);
+        }
     }
 
     async getGitDiff(git) {
@@ -176,7 +212,7 @@ ${fullDiff}
 Generate the commit message now:`;
     }
 
-    async generateCommitMessage(diffData, history, apiKey) {
+    async generateCommitMessage(diffData, history, apiKey, repoName) {
         try {
             const genAI = new GoogleGenAI({ apiKey: apiKey });
             const prompt = this.buildPrompt(diffData, history);
@@ -189,8 +225,18 @@ Generate the commit message now:`;
             });
 
             const text = result.text;
+            const parsedMessage = this.parseCommitMessage(text);
 
-            return this.parseCommitMessage(text);
+            // Save generation regardless of acceptance
+            const generationData = {
+                rawResponse: text,
+                parsedMessage: parsedMessage,
+                prompt: prompt,
+                diffSummary: this.formatDiffForAI(diffData).summary
+            };
+            const generationFilename = this.saveGeneration(repoName, generationData, false);
+
+            return { ...parsedMessage, generationFilename };
         } catch (error) {
             if (error.message.includes('API_KEY_INVALID')) {
                 throw new Error('Invalid Gemini API key. Please check your configuration.');
@@ -368,15 +414,19 @@ For more information, visit: https://github.com/your-repo/smartcommit
                 attempts++;
 
                 try {
-                    const { summary, description } = await this.generateCommitMessage(
+                    const { summary, description, generationFilename } = await this.generateCommitMessage(
                         diffData,
                         history,
-                        config.GEMINI_API_KEY
+                        config.GEMINI_API_KEY,
+                        repoName
                     );
 
                     const action = await this.confirmCommit(summary, description);
 
                     if (action === 'commit') {
+                        // Update generation status to accepted
+                        this.updateGenerationStatus(generationFilename, true);
+
                         const success = await this.commitAndPush(git, summary, description);
 
                         if (success) {

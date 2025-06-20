@@ -11,6 +11,7 @@ AI-powered git commit message generator using Google's Gemini API. Generate prof
 -   **Global Installation**: Use `smartc` command anywhere in your system
 -   **Auto-staging**: Automatically stages all changes before committing
 -   **Smart Push**: Handles upstream branch setup automatically
+-   **Generation Tracking**: Saves every AI generation to `data/generations` with timestamps
 
 ## Installation 📦
 
