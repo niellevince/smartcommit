@@ -86,6 +86,7 @@ This provides a complete audit trail of all AI generations for quality analysis 
 
 -   Fixed commit message parsing and added full file content analysis for better AI context
 -   Implemented structured JSON responses for more reliable parsing and enhanced metadata
+-   Enhanced CLI display with commit type, scope, breaking change indicators, and structured changes list
 
 ## Commit Message Format 📝
 
