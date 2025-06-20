@@ -230,6 +230,76 @@ smartcommit/
 
 ISC License - feel free to use and modify as needed.
 
+## Future Features 🚀
+
+We're continuously improving SmartCommit! Here are some exciting features planned for future releases:
+
+### **🎯 Staging Control Flags**
+
+**`--staged`** - Only commit changes that are already staged
+
+```bash
+smartc --staged
+# Analyzes and commits only staged changes, leaves unstaged changes untouched
+```
+
+**`--unstaged`** - Only commit unstaged changes
+
+```bash
+smartc --unstaged
+# Stages and commits only unstaged changes, preserves existing staged changes
+```
+
+### **🔍 Selective Commit Flag**
+
+**`--only "context description"`** - Commit only file edits related to specific context
+
+```bash
+smartc --only "authentication fixes"
+# AI will analyze all changes but only commit files/changes related to authentication
+
+smartc --only "UI styling updates"
+# Only commits changes related to UI/styling, ignoring unrelated modifications
+
+smartc --only "database schema changes"
+# Groups and commits only database-related changes from your modifications
+```
+
+**How `--only` works:**
+
+-   AI analyzes all your changes
+-   Identifies which files/changes match the provided context
+-   Creates focused commits with only related changes
+-   Leaves unrelated changes for separate commits
+
+### **🎨 Interactive Staging**
+
+**`--interactive`** or **`--patch`** - Interactive change selection
+
+```bash
+smartc --interactive
+# Opens interactive mode to select specific hunks/lines before AI generation
+```
+
+### **📋 Advanced Context Options**
+
+**`--template "template-name"`** - Use predefined commit templates
+
+```bash
+smartc --template "feature"
+smartc --template "bugfix"
+smartc --template "hotfix"
+```
+
+**`--scope "component-name"`** - Force specific scope for conventional commits
+
+```bash
+smartc --scope "auth"
+# Forces scope to "auth" in conventional commit format
+```
+
+---
+
 ## Support 💬
 
 For issues, feature requests, or questions:
@@ -237,6 +307,12 @@ For issues, feature requests, or questions:
 -   Create an issue in the repository
 -   Check existing issues for solutions
 -   Review the troubleshooting section above
+
+**Want to see a feature implemented sooner?**
+
+-   👍 React to this repository or create an issue with your use case
+-   🤝 Contribute by submitting a pull request
+-   💡 Share your workflow ideas in the discussions
 
 ---
 
