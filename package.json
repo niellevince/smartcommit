@@ -1,0 +1,21 @@
+{
+    "name": "smartcommit",
+    "version": "1.0.0",
+    "description": "AI-powered git commit message generator using Gemini API",
+    "main": "index.js",
+    "bin": {
+        "smartc": "./index.js"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@google/genai": "^1.5.1",
+        "inquirer": "^8.2.6",
+        "install": "^0.13.0",
+        "npm": "^11.4.2",
+        "simple-git": "^3.28.0"
+    }
+}
