@@ -4,7 +4,7 @@ AI-powered git commit message generator using Google's Gemini API. Generate prof
 
 ## Features ✨
 
--   **AI-Generated Commits**: Uses Gemini 1.5 Flash to analyze your changes and create meaningful commit messages
+-   **AI-Generated Commits**: Uses Gemini 2.5 Flash to analyze your changes and create meaningful commit messages
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
 -   **Commit History Context**: Learns from your previous commits to generate better messages
 -   **Interactive CLI**: Choose to commit, regenerate, or cancel with a beautiful terminal interface

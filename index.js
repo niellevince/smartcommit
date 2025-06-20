@@ -99,7 +99,7 @@ class SmartCommit {
             accepted: accepted,
             generation: generation,
             metadata: {
-                model: 'gemini-2.0-flash-001',
+                model: 'gemini-2.5-flash',
                 version: '1.0.0'
             }
         };
@@ -300,7 +300,7 @@ class SmartCommit {
             console.log('🤖 Generating commit message with Gemini AI...\n');
 
             const result = await genAI.models.generateContent({
-                model: 'gemini-2.0-flash-001',
+                model: 'gemini-2.5-flash',
                 contents: structuredRequest
             });
 
