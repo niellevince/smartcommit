@@ -7,15 +7,26 @@ class CLIInterface {
     }
 
     async confirmCommit(commitData) {
-        console.log('\n' + '='.repeat(60));
-        console.log('🤖 GENERATED COMMIT MESSAGE');
-        console.log('='.repeat(60));
-        console.log(`📝 Summary: ${commitData.summary}`);
+        const { summary, description, type, scope, breaking, issues, changes } = commitData;
 
-        if (commitData.description) {
-            console.log(`📄 Description:\n${commitData.description}`);
+        console.log('📝 Generated Commit Message:\n');
+        console.log(`Summary: ${summary}`);
+        console.log(`Type: ${type}${scope ? ` | Scope: ${scope}` : ''}${breaking ? ' | ⚠️ BREAKING CHANGE' : ''}`);
+
+        if (changes && changes.length > 0) {
+            console.log(`\nChanges:`);
+            changes.forEach(change => console.log(`  - ${change}`));
         }
-        console.log('='.repeat(60) + '\n');
+
+        if (description) {
+            console.log(`\nDescription:\n${description}`);
+        }
+
+        if (issues && issues.length > 0) {
+            console.log(`\nIssues: ${issues.map(issue => `#${issue}`).join(', ')}`);
+        }
+
+        console.log(); // Empty line
 
         const { action } = await inquirer.prompt([
             {
@@ -23,8 +34,8 @@ class CLIInterface {
                 name: 'action',
                 message: 'What would you like to do?',
                 choices: [
-                    { name: '✅ Accept and commit', value: 'accept' },
-                    { name: '🔄 Regenerate message', value: 'regenerate' },
+                    { name: '✅ Commit and push changes', value: 'accept' },
+                    { name: '🔄 Regenerate commit message', value: 'regenerate' },
                     { name: '❌ Cancel', value: 'cancel' }
                 ],
                 default: 'accept'

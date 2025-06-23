@@ -68,7 +68,7 @@ class HistoryManager {
         this.logger.info(`📚 Added to commit history for ${repoName}`);
     }
 
-    saveGeneration(repoName, generation, accepted = false) {
+    saveGeneration(repoName, generation, accepted = false, requestData = null) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '-').slice(0, 19);
         const filename = `${timestamp}.json`;
         const generationPath = path.join(this.generationsDir, filename);
@@ -77,6 +77,7 @@ class HistoryManager {
             timestamp: new Date().toISOString(),
             repository: repoName,
             accepted: accepted,
+            request: requestData || null,
             generation: generation,
             metadata: {
                 model: 'gemini-2.5-flash',

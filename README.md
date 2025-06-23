@@ -412,3 +412,4 @@ For issues, feature requests, or questions:
 ---
 
 **Made with ❤️ and AI** - SmartCommit helps you write better commit messages effortlessly!
+Enhanced with complete generation tracking

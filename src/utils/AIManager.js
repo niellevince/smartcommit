@@ -25,7 +25,19 @@ class AIManager {
 
                 if (commitData.summary) {
                     this.logger.success(`✅ Commit message generated successfully on attempt ${attempt}`);
-                    return commitData;
+
+                    // Return both the commit data and complete generation data (like original)
+                    return {
+                        ...commitData,
+                        requestData: {
+                            rawResponse: text,                               // Full AI response
+                            parsedMessage: commitData,                      // Parsed result
+                            structuredRequest: JSON.parse(request),         // Full structured request
+                            fileCount: diffData.files.length,              // File count
+                            changedFiles: diffData.files.map(f => f.path), // Changed files list
+                            additionalContext: additionalContext           // Additional context
+                        }
+                    };
                 }
 
                 throw new Error('Generated commit message was empty or invalid');
@@ -45,135 +57,175 @@ class AIManager {
     }
 
     buildStructuredRequest(diffData, history, additionalContext = null) {
-        const recentHistory = history.slice(-5);
+        const { files, fileContents } = diffData;
 
-        let prompt = `You are an expert developer assistant that generates conventional commit messages. Analyze the git changes and provide a commit message following conventional commit format.
+        // Build recent commit history (last 3 commits like original)
+        const recentCommits = history.slice(-3).map(commit => ({
+            summary: commit.summary,
+            description: commit.description ? commit.description.split('\n')[0] : null,
+            type: commit.type || null,
+            scope: commit.scope || null,
+            timestamp: commit.timestamp
+        }));
 
-CONVENTIONAL COMMIT FORMAT:
-<type>[optional scope]: <description>
+        // Build files with their content and diff (like original)
+        const filesData = {};
+        files.forEach(file => {
+            const content = fileContents[file.path] || '[Unable to read file]';
 
-[optional body]
+            // Limit content to prevent extremely long prompts (max 2000 chars per file like original)
+            const truncatedContent = content && content.length > 2000
+                ? content.substring(0, 2000) + '\n\n[Content truncated - showing first 2000 characters]'
+                : content;
 
-[optional footer(s)]
+            filesData[file.path] = {
+                status: {
+                    index: file.index || null,
+                    workingDir: file.working_dir || null,
+                    statusDescription: this.getStatusDescription(file.index, file.working_dir)
+                },
+                content: truncatedContent,
+                path: file.path,
+                isBinary: this.isBinaryFile(file.path),
+                size: content ? content.length : 0
+            };
+        });
 
-TYPES: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert
+        // Build the structured request (same as original)
+        const structuredRequest = {
+            instructions: {
+                task: "Generate a professional git commit message based on the provided code changes",
+                format: "Return a JSON object with the specified structure",
+                guidelines: [
+                    "Use conventional commit types: feat, fix, docs, style, refactor, test, chore",
+                    "Keep summary under 50 characters",
+                    "Use present tense ('add' not 'added')",
+                    "Be specific about what changed",
+                    "Explain the 'why' in the description",
+                    "Focus on the business value or problem solved",
+                    "Analyze the full file contents to understand the complete context",
+                    "Set 'breaking' to true only for breaking changes",
+                    "Include issue numbers in 'issues' array if this fixes any issues",
+                    additionalContext ? "Pay special attention to the additional context provided by the user" : null
+                ].filter(Boolean),
+                outputFormat: {
+                    summary: "<type>(<scope>): <description>",
+                    description: "<detailed explanation of what was changed and why>",
+                    changes: ["<specific change 1>", "<specific change 2>", "<specific change 3>"],
+                    type: "<commit type>",
+                    scope: "<commit scope>",
+                    breaking: false,
+                    issues: ["<issue-number>"]
+                }
+            },
+            context: {
+                repository: this.getRepoName(),
+                changedFilesCount: files.length,
+                recentCommits: recentCommits,
+                additionalContext: additionalContext
+            },
+            diff: {
+                staged: diffData.stagedDiff || '',
+                unstaged: diffData.unstagedDiff || ''
+            },
+            files: filesData
+        };
 
-REQUIREMENTS:
-1. Use conventional commit format strictly
-2. Keep summary under 72 characters
-3. Use present tense ("add" not "added")
-4. Don't capitalize first letter of description
-5. No period at end of summary
-6. Include body if changes are complex
-7. Reference breaking changes in footer if applicable
+        return JSON.stringify(structuredRequest, null, 2);
+    }
 
-RECENT COMMIT HISTORY:
-${recentHistory.map((item, index) =>
-            `${index + 1}. ${item.summary}${item.description ? '\n   ' + item.description.split('\n')[0] : ''}`
-        ).join('\n')}
+    getRepoName() {
+        return require('path').basename(process.cwd());
+    }
 
-GIT STATUS:
-${diffData.files.map(file =>
-            `${this.getStatusDescription(file.index, file.working_dir)} ${file.path}`
-        ).join('\n')}
+    isBinaryFile(filepath) {
+        const binaryExtensions = [
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.ico',
+            '.mp3', '.wav', '.mp4', '.avi', '.mov', '.pdf', '.zip',
+            '.tar', '.gz', '.exe', '.dll', '.so', '.dylib', '.bin',
+            '.obj', '.o', '.a', '.lib', '.class', '.jar'
+        ];
 
-STAGED CHANGES:
-${diffData.stagedDiff || 'No staged changes'}
-
-UNSTAGED CHANGES:
-${diffData.unstagedDiff || 'No unstaged changes'}
-
-FILE CONTENTS CONTEXT:
-${Object.entries(diffData.fileContents).map(([path, content]) =>
-            `=== ${path} ===\n${typeof content === 'string' && content.length > 500 ? content.substring(0, 500) + '...' : content}`
-        ).join('\n\n')}
-
-${additionalContext ? `\nADDITIONAL CONTEXT:\n${additionalContext}\n` : ''}
-
-Generate a conventional commit message that accurately describes these changes. Respond with ONLY the commit message in this exact format:
-
-SUMMARY: <conventional commit summary>
-DESCRIPTION: <detailed description or empty>
-
-Do not include any other text, explanations, or formatting.`;
-
-        return prompt;
+        const ext = require('path').extname(filepath).toLowerCase();
+        return binaryExtensions.includes(ext);
     }
 
     parseCommitMessage(aiResponse) {
         try {
+            // Clean the response - remove any markdown code blocks if present (like original)
+            let cleanedResponse = aiResponse.trim();
+
+            // Remove code block markers if present
+            if (cleanedResponse.startsWith('```json')) {
+                cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanedResponse.startsWith('```')) {
+                cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
+            // Parse JSON response
+            const parsed = JSON.parse(cleanedResponse);
+
+            // Build description with changes if provided (like original)
+            let description = parsed.description || '';
+            if (parsed.changes && Array.isArray(parsed.changes) && parsed.changes.length > 0) {
+                description += '\n\n' + parsed.changes.map(change => `- ${change}`).join('\n');
+            }
+
+            // Add issue references if provided (like original)
+            if (parsed.issues && Array.isArray(parsed.issues) && parsed.issues.length > 0) {
+                const issueRefs = parsed.issues.map(issue => `Closes #${issue}`).join(', ');
+                description += '\n\n' + issueRefs;
+            }
+
+            return {
+                summary: parsed.summary || 'chore: update files',
+                description: description.trim(),
+                type: parsed.type || 'chore',
+                scope: parsed.scope || null,
+                breaking: parsed.breaking || false,
+                issues: parsed.issues || [],
+                changes: parsed.changes || [],
+                fullMessage: description ? `${parsed.summary}\n\n${description.trim()}` : parsed.summary
+            };
+
+        } catch (error) {
+            this.logger.warn('⚠️  Failed to parse JSON response, falling back to text parsing...');
+
+            // Fallback to basic text parsing if JSON parsing fails (like original)
             const lines = aiResponse.trim().split('\n');
             let summary = '';
             let description = '';
 
             for (const line of lines) {
-                const trimmedLine = line.trim();
-                if (trimmedLine.startsWith('SUMMARY:')) {
-                    summary = trimmedLine.replace('SUMMARY:', '').trim();
-                } else if (trimmedLine.startsWith('DESCRIPTION:')) {
-                    description = trimmedLine.replace('DESCRIPTION:', '').trim();
-                }
-            }
-
-            // Fallback: if structured format not found, try to extract from response
-            if (!summary) {
-                const cleanResponse = aiResponse.trim();
-                const firstLine = cleanResponse.split('\n')[0];
-
-                // Check if it looks like a conventional commit
-                const conventionalPattern = /^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?!?:\s*.+/;
-                if (conventionalPattern.test(firstLine)) {
-                    summary = firstLine;
-                    const remainingLines = cleanResponse.split('\n').slice(1).join('\n').trim();
-                    if (remainingLines && remainingLines.length > 0) {
-                        description = remainingLines;
+                const trimmed = line.trim();
+                if (trimmed &&
+                    !trimmed.startsWith('{') &&
+                    !trimmed.startsWith('}') &&
+                    !trimmed.startsWith('"') &&
+                    !trimmed.includes('JSON') &&
+                    trimmed.length > 10) {
+                    if (!summary) {
+                        summary = trimmed;
+                    } else {
+                        description += trimmed + '\n';
                     }
-                } else {
-                    // If not conventional format, try to make it conventional
-                    summary = this.makeConventional(firstLine);
-                    description = cleanResponse.split('\n').slice(1).join('\n').trim();
                 }
-            }
-
-            // Validate summary
-            if (!summary) {
-                throw new Error('No valid commit summary found in AI response');
-            }
-
-            // Clean up description
-            if (description === 'empty' || description === 'Empty' || description === '') {
-                description = '';
             }
 
             return {
-                summary: summary.trim(),
-                description: description.trim(),
-                fullMessage: description ? `${summary}\n\n${description}` : summary
+                summary: summary || 'chore: update files',
+                description: description.trim() || 'Various updates and improvements',
+                type: 'chore',
+                scope: null,
+                breaking: false,
+                issues: [],
+                changes: [],
+                fullMessage: description ? `${summary}\n\n${description.trim()}` : summary
             };
-
-        } catch (error) {
-            throw new Error(`Failed to parse AI response: ${error.message}. Response was: ${aiResponse}`);
         }
     }
 
-    makeConventional(summary) {
-        // Simple heuristic to convert summary to conventional format
-        const lower = summary.toLowerCase();
 
-        if (lower.includes('add') || lower.includes('new') || lower.includes('implement')) {
-            return `feat: ${summary.toLowerCase()}`;
-        } else if (lower.includes('fix') || lower.includes('bug') || lower.includes('error')) {
-            return `fix: ${summary.toLowerCase()}`;
-        } else if (lower.includes('update') || lower.includes('refactor') || lower.includes('improve')) {
-            return `refactor: ${summary.toLowerCase()}`;
-        } else if (lower.includes('doc') || lower.includes('readme')) {
-            return `docs: ${summary.toLowerCase()}`;
-        } else if (lower.includes('test')) {
-            return `test: ${summary.toLowerCase()}`;
-        } else {
-            return `chore: ${summary.toLowerCase()}`;
-        }
-    }
 
     getStatusDescription(index, workingDir) {
         const statusMap = {

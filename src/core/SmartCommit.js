@@ -38,100 +38,148 @@ class SmartCommit {
             return;
         }
 
-        const targetPath = args[0] || process.cwd();
-        await this.processCommit(targetPath);
+        // Parse additional context flag (like original)
+        let additionalContext = null;
+        const additionalIndex = args.findIndex(arg => arg === '--additional');
+        if (additionalIndex !== -1 && args[additionalIndex + 1]) {
+            additionalContext = args[additionalIndex + 1];
+            // Remove the flag and its value from args
+            args.splice(additionalIndex, 2);
+        }
+
+        const targetPath = args[0] || '.';
+        await this.processCommit(targetPath, additionalContext);
     }
 
-    async processCommit(targetPath) {
+    async processCommit(targetPath, additionalContext = null) {
         try {
+            console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
+
+            // Initialize git and validate repository (like original)
+            const git = this.gitManager.initGit(targetPath);
+            const isRepo = await git.checkIsRepo();
+            if (!isRepo) {
+                console.error('❌ Error: Not a git repository!');
+                process.exit(1);
+            }
+
             // Load configuration
             const config = await this.configManager.loadConfig();
 
-            // Initialize git
-            const git = this.gitManager.initGit(targetPath);
+            // Get repository name and load history
             const repoName = this.gitManager.getRepoName(targetPath);
-
-            // Check git status and get diff
-            const diffData = await this.gitManager.getGitDiff(git);
-            if (!diffData) {
-                this.logger.info('✅ No changes detected. Working tree is clean.');
-                return;
-            }
-
-            // Load history
             const history = this.historyManager.loadHistory(repoName);
 
-            // Generate commit message
-            this.logger.info('🤖 Generating commit message...');
-            const commitData = await this.aiManager.generateCommitMessage(
-                diffData,
-                history,
-                config.GEMINI_API_KEY,
-                repoName
-            );
+            // Display repository info (like original)
+            console.log(`📂 Repository: ${repoName}`);
+            console.log(`📍 Path: ${path.resolve(targetPath)}`);
+            if (additionalContext) {
+                console.log(`📋 Additional context: "${additionalContext}"`);
+            }
+            console.log();
 
-            // Save generation for tracking
-            const generationFile = this.historyManager.saveGeneration(repoName, commitData);
+            // Check for changes
+            console.log('🔍 Checking for changes...');
+            const diffData = await this.gitManager.getGitDiff(git);
+            if (!diffData) {
+                console.log('✨ No changes detected. Repository is clean!');
+                process.exit(0);
+            }
 
-            // Confirm with user
-            const confirmed = await this.cli.confirmCommit(commitData);
+            console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
 
-            if (confirmed.action === 'accept') {
-                await this.executeCommit(git, commitData, repoName, history, generationFile);
-            } else if (confirmed.action === 'regenerate') {
-                await this.regenerateCommit(git, diffData, history, config, repoName);
-            } else {
-                this.logger.info('❌ Commit cancelled.');
-                this.historyManager.updateGenerationStatus(generationFile, false);
+            // Stage all changes
+            await this.gitManager.stageAllChanges(git);
+
+            // Generate and confirm commit message with retry logic (like original)
+            let attempts = 0;
+            const maxAttempts = 3;
+
+            while (attempts < maxAttempts) {
+                attempts++;
+
+                try {
+                    const result = await this.aiManager.generateCommitMessage(
+                        diffData,
+                        history,
+                        config.GEMINI_API_KEY,
+                        repoName,
+                        additionalContext
+                    );
+
+                    // Extract commit data and request data
+                    const { requestData, ...commitData } = result;
+
+                    // Save generation for tracking
+                    const generationFile = this.historyManager.saveGeneration(repoName, commitData, false, requestData);
+
+                    // Add generation filename to commit data for tracking
+                    commitData.generationFilename = generationFile;
+
+                    const confirmed = await this.cli.confirmCommit(commitData);
+
+                    if (confirmed.action === 'accept') {
+                        await this.executeCommit(git, commitData, repoName, history, generationFile);
+                        break;
+                    } else if (confirmed.action === 'regenerate') {
+                        // Continue loop for regeneration
+                        continue;
+                    } else {
+                        console.log('⏹️  Operation cancelled.');
+                        this.historyManager.updateGenerationStatus(generationFile, false);
+                        process.exit(0);
+                    }
+
+                } catch (error) {
+                    if (attempts >= maxAttempts) {
+                        throw error;
+                    }
+                    console.log(`⚠️  Attempt ${attempts} failed: ${error.message}`);
+                    console.log('🔄 Retrying...\n');
+                }
             }
 
         } catch (error) {
-            this.logger.error('Failed to process commit:', error);
-            throw error;
+            console.error(`\n❌ Error: ${error.message}`);
+            process.exit(1);
         }
     }
 
     async executeCommit(git, commitData, repoName, history, generationFile) {
         try {
-            // Stage all changes
-            await this.gitManager.stageAllChanges(git);
+            // Update generation status to accepted (like original)
+            this.historyManager.updateGenerationStatus(generationFile, true);
 
             // Commit and push
             await this.gitManager.commitAndPush(git, commitData.summary, commitData.description);
 
-            // Update history and generation status
-            this.historyManager.addToHistory(repoName, commitData);
-            this.historyManager.updateGenerationStatus(generationFile, true);
+            // Save to history (like original with file paths and history limit)
+            const commitRecord = {
+                timestamp: new Date().toISOString(),
+                summary: commitData.summary,
+                description: commitData.description,
+                type: commitData.type,
+                scope: commitData.scope,
+                breaking: commitData.breaking,
+                issues: commitData.issues,
+                files: [] // Will be populated by git diff files
+            };
 
-            this.logger.success('✅ Changes committed and pushed successfully!');
+            history.push(commitRecord);
+            // Keep only last 10 commits in history (like original)
+            if (history.length > 10) {
+                history.splice(0, history.length - 10);
+            }
+
+            this.historyManager.saveHistory(repoName, history);
+            console.log('\n🎉 All done! Your changes have been committed and pushed.');
         } catch (error) {
             this.logger.error('Failed to execute commit:', error);
             throw error;
         }
     }
 
-    async regenerateCommit(git, diffData, history, config, repoName) {
-        this.logger.info('🔄 Regenerating commit message...');
 
-        const additionalContext = await this.cli.getAdditionalContext();
-        const newCommitData = await this.aiManager.generateCommitMessage(
-            diffData,
-            history,
-            config.GEMINI_API_KEY,
-            repoName,
-            additionalContext
-        );
-
-        const generationFile = this.historyManager.saveGeneration(repoName, newCommitData);
-        const confirmed = await this.cli.confirmCommit(newCommitData);
-
-        if (confirmed.action === 'accept') {
-            await this.executeCommit(git, newCommitData, repoName, history, generationFile);
-        } else {
-            this.logger.info('❌ Commit cancelled.');
-            this.historyManager.updateGenerationStatus(generationFile, false);
-        }
-    }
 
     async cleanData() {
         const confirmed = await this.cli.confirmCleanData();
@@ -146,26 +194,39 @@ class SmartCommit {
 
     showHelp() {
         console.log(`
-🚀 SmartCommit - AI-powered Git Commit Message Generator
+🚀 SmartCommit - AI-Powered Git Commit Generator
 
 USAGE:
-    smartc [path]                Generate commit message for repository
-    smartc --help, -h           Show this help message
-    smartc --version, -v        Show version information
-    smartc --clean              Clean all data and reset configuration
+  smartc [path]                           Generate AI commit for repository at path
+  smartc                                  Generate AI commit for current directory
+  smartc --additional "context info"     Include additional context for AI
+  smartc --help, -h                       Show this help message
+  smartc --version, -v                    Show version information
+  smartc --clean                          Clean all data and reset configuration
+
+OPTIONS:
+  --additional "text"                     Provide additional context to help AI generate
+                                         more accurate commit messages
 
 EXAMPLES:
-    smartc                      Process current directory
-    smartc /path/to/repo        Process specific repository
-    smartc --clean              Reset all configuration and history
+  smartc                                  # Commit changes in current directory
+  smartc .                                # Commit changes in current directory
+  smartc /path/to/repo                    # Commit changes in specific repository
+  smartc --additional "Fixed bug #123"    # Include extra context for AI
+  smartc . --additional "Refactoring"     # Combine path and context
+  smartc --clean                          # Reset all configuration and history
 
 FEATURES:
-    ✨ AI-powered commit messages using Gemini API
-    📝 Conventional commit format
-    📊 Commit history tracking
-    🔄 Interactive regeneration
-    🚀 Automatic staging and pushing
-    💾 Generation history saving
+  ✨ AI-generated commit messages using Gemini API
+  📝 Conventional commit format (feat, fix, docs, etc.)
+  🔄 Interactive confirmation with regeneration option
+  📚 Learns from your commit history for better context
+  🚀 Automatic staging and pushing
+  📋 Additional context support for better accuracy
+
+SETUP:
+  On first run, you'll be prompted for your Gemini API key.
+  Get yours at: https://makersuite.google.com/app/apikey
 
 For more information, visit: https://github.com/yourrepo/smartcommit
         `);
