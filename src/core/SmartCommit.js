@@ -47,11 +47,26 @@ class SmartCommit {
             args.splice(additionalIndex, 2);
         }
 
+        // Parse radius flag
+        let radius = 10; // Default radius
+        const radiusIndex = args.findIndex(arg => arg === '--radius');
+        if (radiusIndex !== -1 && args[radiusIndex + 1]) {
+            const radiusValue = parseInt(args[radiusIndex + 1]);
+            if (!isNaN(radiusValue) && radiusValue > 0) {
+                radius = radiusValue;
+            } else {
+                console.error('❌ Error: --radius must be a positive number');
+                process.exit(1);
+            }
+            // Remove the flag and its value from args
+            args.splice(radiusIndex, 2);
+        }
+
         const targetPath = args[0] || '.';
-        await this.processCommit(targetPath, additionalContext);
+        await this.processCommit(targetPath, additionalContext, radius);
     }
 
-    async processCommit(targetPath, additionalContext = null) {
+    async processCommit(targetPath, additionalContext = null, radius = 10) {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
@@ -76,11 +91,14 @@ class SmartCommit {
             if (additionalContext) {
                 console.log(`📋 Additional context: "${additionalContext}"`);
             }
+            if (radius !== 10) {
+                console.log(`📏 Context radius: ${radius} lines`);
+            }
             console.log();
 
             // Check for changes
             console.log('🔍 Checking for changes...');
-            const diffData = await this.gitManager.getGitDiff(git);
+            const diffData = await this.gitManager.getGitDiff(git, radius);
             if (!diffData) {
                 console.log('✨ No changes detected. Repository is clean!');
                 process.exit(0);
@@ -207,6 +225,7 @@ USAGE:
 OPTIONS:
   --additional "text"                     Provide additional context to help AI generate
                                          more accurate commit messages
+  --radius N                              Set context radius (default: 10 lines around changes)
 
 EXAMPLES:
   smartc                                  # Commit changes in current directory
@@ -214,6 +233,8 @@ EXAMPLES:
   smartc /path/to/repo                    # Commit changes in specific repository
   smartc --additional "Fixed bug #123"    # Include extra context for AI
   smartc . --additional "Refactoring"     # Combine path and context
+  smartc --radius 5                       # Use smaller context radius (5 lines)
+  smartc --radius 20                      # Use larger context radius (20 lines)
   smartc --clean                          # Reset all configuration and history
 
 FEATURES:

@@ -28,7 +28,7 @@ class GitManager {
         return git;
     }
 
-    async getGitDiff(git) {
+    async getGitDiff(git, radius = 10) {
         try {
             const status = await git.status();
 
@@ -40,7 +40,7 @@ class GitManager {
             const diffAll = await git.diff();
 
             // Get contextual file contents with radius
-            const fileContents = await this.getFileContentsWithRadius(status.files, git);
+            const fileContents = await this.getFileContentsWithRadius(status.files, git, radius);
 
             return {
                 status,
