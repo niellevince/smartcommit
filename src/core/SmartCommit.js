@@ -55,7 +55,7 @@ class SmartCommit {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
-            // Initialize git and validate reposnpm itory (like original)
+            // Initialize git and validate repository (like original)
             const git = this.gitManager.initGit(targetPath);
             const isRepo = await git.checkIsRepo();
             if (!isRepo) {
