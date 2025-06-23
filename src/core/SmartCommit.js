@@ -55,7 +55,7 @@ class SmartCommit {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
-            // Initialize git and validate repository (like original)
+            // Initialize git and validate reposnpm itory (like original)
             const git = this.gitManager.initGit(targetPath);
             const isRepo = await git.checkIsRepo();
             if (!isRepo) {
@@ -87,9 +87,6 @@ class SmartCommit {
             }
 
             console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
-
-            // Stage all changes
-            await this.gitManager.stageAllChanges(git);
 
             // Generate and confirm commit message with retry logic (like original)
             let attempts = 0;
@@ -149,6 +146,9 @@ class SmartCommit {
         try {
             // Update generation status to accepted (like original)
             this.historyManager.updateGenerationStatus(generationFile, true);
+
+            // Stage all changes before committing
+            await this.gitManager.stageAllChanges(git);
 
             // Commit and push
             await this.gitManager.commitAndPush(git, commitData.summary, commitData.description);
