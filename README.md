@@ -20,9 +20,12 @@ AI-powered git commit message generator using Google's Gemini API. Generate prof
 ### Option 1: Global Installation (Recommended)
 
 ```bash
-# Clone and install globally
+# Clone and install dependencies first
 git clone https://github.com/niellevince/smartcommit
 cd smartcommit
+npm install
+
+# Then install globally
 npm install -g .
 
 # Now you can use 'smartc' anywhere
