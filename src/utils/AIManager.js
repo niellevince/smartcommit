@@ -23,15 +23,18 @@ class AIManager {
 
                 const commitData = this.parseCommitMessage(text);
 
-                if (commitData.summary) {
+                if (commitData && commitData.summary) {
                     this.logger.success(`✅ Commit message generated successfully on attempt ${attempt}`);
+
+                    // Remove internal parsing flag from the returned data
+                    const { parseSuccess, ...cleanCommitData } = commitData;
 
                     // Return both the commit data and complete generation data (like original)
                     return {
-                        ...commitData,
+                        ...cleanCommitData,
                         requestData: {
                             rawResponse: text,                               // Full AI response
-                            parsedMessage: commitData,                      // Parsed result
+                            parsedMessage: cleanCommitData,                 // Parsed result
                             structuredRequest: JSON.parse(request),         // Full structured request
                             fileCount: diffData.files.length,              // File count
                             changedFiles: diffData.files.map(f => f.path), // Changed files list
@@ -40,7 +43,7 @@ class AIManager {
                     };
                 }
 
-                throw new Error('Generated commit message was empty or invalid');
+                throw new Error('Generated commit message could not be parsed or was empty');
 
             } catch (error) {
                 this.logger.warn(`⚠️  Attempt ${attempt} failed: ${error.message}`);
@@ -165,6 +168,11 @@ class AIManager {
             // Parse JSON response
             const parsed = JSON.parse(cleanedResponse);
 
+            // Validate that we have at least a summary from the AI
+            if (!parsed.summary || parsed.summary.trim().length === 0) {
+                throw new Error('AI response missing required summary field');
+            }
+
             // Build description with changes if provided (like original)
             let description = parsed.description || '';
             if (parsed.changes && Array.isArray(parsed.changes) && parsed.changes.length > 0) {
@@ -178,14 +186,15 @@ class AIManager {
             }
 
             return {
-                summary: parsed.summary || 'chore: update files',
+                summary: parsed.summary,
                 description: description.trim(),
                 type: parsed.type || 'chore',
                 scope: parsed.scope || null,
                 breaking: parsed.breaking || false,
                 issues: parsed.issues || [],
                 changes: parsed.changes || [],
-                fullMessage: description ? `${parsed.summary}\n\n${description.trim()}` : parsed.summary
+                fullMessage: description ? `${parsed.summary}\n\n${description.trim()}` : parsed.summary,
+                parseSuccess: true
             };
 
         } catch (error) {
@@ -212,16 +221,23 @@ class AIManager {
                 }
             }
 
-            return {
-                summary: summary || 'chore: update files',
-                description: description.trim() || 'Various updates and improvements',
-                type: 'chore',
-                scope: null,
-                breaking: false,
-                issues: [],
-                changes: [],
-                fullMessage: description ? `${summary}\n\n${description.trim()}` : summary
-            };
+            // Only return fallback if we found at least some text
+            if (summary && summary.length > 0) {
+                return {
+                    summary: summary,
+                    description: description.trim() || 'Various updates and improvements',
+                    type: 'chore',
+                    scope: null,
+                    breaking: false,
+                    issues: [],
+                    changes: [],
+                    fullMessage: description ? `${summary}\n\n${description.trim()}` : summary,
+                    parseSuccess: false
+                };
+            }
+
+            // If we couldn't parse anything meaningful, return null to trigger retry
+            return null;
         }
     }
 
