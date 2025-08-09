@@ -7,14 +7,14 @@ class AIManager {
         this.maxRetries = 3;
     }
 
-    async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null) {
+    async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null, selectiveContext = null) {
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating commit message...`);
 
                 const ai = new GoogleGenAI({ apiKey });
 
-                const request = this.buildStructuredRequest(diffData, history, additionalContext);
+                const request = this.buildStructuredRequest(diffData, history, additionalContext, selectiveContext);
                 const response = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: request
@@ -59,7 +59,7 @@ class AIManager {
         }
     }
 
-    buildStructuredRequest(diffData, history, additionalContext = null) {
+    buildStructuredRequest(diffData, history, additionalContext = null, selectiveContext = null) {
         const { files, fileContents } = diffData;
 
         // Build recent commit history (last 3 commits like original)
@@ -94,10 +94,12 @@ class AIManager {
             };
         });
 
-        // Build the structured request (same as original)
+        // Build the structured request with selective filtering support
         const structuredRequest = {
             instructions: {
-                task: "Generate a professional git commit message based on the provided code changes",
+                task: selectiveContext 
+                    ? `Generate a professional git commit message based on ONLY the code changes related to: "${selectiveContext}". Analyze all changes but only include files/changes that match this context.`
+                    : "Generate a professional git commit message based on the provided code changes",
                 format: "Return a JSON object with the specified structure",
                 guidelines: [
                     "Use conventional commit types: feat, fix, docs, style, refactor, test, chore",
@@ -109,9 +111,19 @@ class AIManager {
                     "Analyze the full file contents to understand the complete context",
                     "Set 'breaking' to true only for breaking changes",
                     "Include issue numbers in 'issues' array if this fixes any issues",
-                    additionalContext ? "Pay special attention to the additional context provided by the user" : null
+                    additionalContext ? "Pay special attention to the additional context provided by the user" : null,
+                    selectiveContext ? `IMPORTANT: Only commit changes related to "${selectiveContext}". Identify which files/changes match this context and include only those in the commit. Add a 'selectedFiles' array listing the files that should be committed.` : null
                 ].filter(Boolean),
-                outputFormat: {
+                outputFormat: selectiveContext ? {
+                    summary: "<type>(<scope>): <description>",
+                    description: "<detailed explanation of what was changed and why>",
+                    changes: ["<specific change 1>", "<specific change 2>", "<specific change 3>"],
+                    type: "<commit type>",
+                    scope: "<commit scope>",
+                    breaking: false,
+                    issues: ["<issue-number>"],
+                    selectedFiles: ["<file1.js>", "<file2.js>"]
+                } : {
                     summary: "<type>(<scope>): <description>",
                     description: "<detailed explanation of what was changed and why>",
                     changes: ["<specific change 1>", "<specific change 2>", "<specific change 3>"],
@@ -125,7 +137,8 @@ class AIManager {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
                 recentCommits: recentCommits,
-                additionalContext: additionalContext
+                additionalContext: additionalContext,
+                selectiveContext: selectiveContext
             },
             diff: {
                 staged: diffData.stagedDiff || '',
@@ -270,4 +283,4 @@ class AIManager {
     }
 }
 
-module.exports = { AIManager }; 
+module.exports = { AIManager };

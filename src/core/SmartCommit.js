@@ -62,11 +62,20 @@ class SmartCommit {
             args.splice(radiusIndex, 2);
         }
 
+        // Parse selective commit flag
+        let selectiveContext = null;
+        const onlyIndex = args.findIndex(arg => arg === '--only');
+        if (onlyIndex !== -1 && args[onlyIndex + 1]) {
+            selectiveContext = args[onlyIndex + 1];
+            // Remove the flag and its value from args
+            args.splice(onlyIndex, 2);
+        }
+
         const targetPath = args[0] || '.';
-        await this.processCommit(targetPath, additionalContext, radius);
+        await this.processCommit(targetPath, additionalContext, radius, selectiveContext);
     }
 
-    async processCommit(targetPath, additionalContext = null, radius = 10) {
+    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null) {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
@@ -90,6 +99,9 @@ class SmartCommit {
             console.log(`📍 Path: ${path.resolve(targetPath)}`);
             if (additionalContext) {
                 console.log(`📋 Additional context: "${additionalContext}"`);
+            }
+            if (selectiveContext) {
+                console.log(`🔍 Selective commit: "${selectiveContext}"`);
             }
             if (radius !== 10) {
                 console.log(`📏 Context radius: ${radius} lines`);
@@ -119,7 +131,8 @@ class SmartCommit {
                         history,
                         config.GEMINI_API_KEY,
                         repoName,
-                        additionalContext
+                        additionalContext,
+                        selectiveContext
                     );
 
                     // Extract commit data and request data
@@ -165,8 +178,13 @@ class SmartCommit {
             // Update generation status to accepted (like original)
             this.historyManager.updateGenerationStatus(generationFile, true);
 
-            // Stage all changes before committing
-            await this.gitManager.stageAllChanges(git);
+            // Stage changes before committing (selective or all)
+            if (commitData.selectedFiles && commitData.selectedFiles.length > 0) {
+                await this.gitManager.stageSelectedFiles(git, commitData.selectedFiles);
+                console.log(`🔍 Selective commit: staged ${commitData.selectedFiles.length} file(s)`);
+            } else {
+                await this.gitManager.stageAllChanges(git);
+            }
 
             // Commit and push
             await this.gitManager.commitAndPush(git, commitData.summary, commitData.description);
@@ -218,6 +236,7 @@ USAGE:
   smartc [path]                           Generate AI commit for repository at path
   smartc                                  Generate AI commit for current directory
   smartc --additional "context info"     Include additional context for AI
+  smartc --only "context description"    Commit only changes related to specific context
   smartc --help, -h                       Show this help message
   smartc --version, -v                    Show version information
   smartc --clean                          Clean all data and reset configuration
@@ -225,6 +244,8 @@ USAGE:
 OPTIONS:
   --additional "text"                     Provide additional context to help AI generate
                                          more accurate commit messages
+  --only "context"                       Commit only file edits related to specific context
+                                         (AI analyzes all changes but commits only matching ones)
   --radius N                              Set context radius (default: 10 lines around changes)
 
 EXAMPLES:
@@ -233,6 +254,9 @@ EXAMPLES:
   smartc /path/to/repo                    # Commit changes in specific repository
   smartc --additional "Fixed bug #123"    # Include extra context for AI
   smartc . --additional "Refactoring"     # Combine path and context
+  smartc --only "authentication fixes"    # Commit only auth-related changes
+  smartc --only "UI styling updates"      # Commit only UI/styling changes
+  smartc --only "database schema"         # Commit only database-related changes
   smartc --radius 5                       # Use smaller context radius (5 lines)
   smartc --radius 20                      # Use larger context radius (20 lines)
   smartc --clean                          # Reset all configuration and history
@@ -244,6 +268,7 @@ FEATURES:
   📚 Learns from your commit history for better context
   🚀 Automatic staging and pushing
   📋 Additional context support for better accuracy
+  🔍 Selective commits - commit only changes related to specific context
 
 SETUP:
   On first run, you'll be prompted for your Gemini API key.
@@ -259,4 +284,4 @@ For more information, visit: https://github.com/yourrepo/smartcommit
     }
 }
 
-module.exports = { SmartCommit }; 
+module.exports = { SmartCommit };

@@ -291,6 +291,23 @@ class GitManager {
         }
     }
 
+    async stageSelectedFiles(git, selectedFiles) {
+        try {
+            if (!selectedFiles || selectedFiles.length === 0) {
+                throw new Error('No files selected for staging');
+            }
+
+            // Stage each selected file individually
+            for (const file of selectedFiles) {
+                await git.add(file);
+            }
+
+            this.logger.info(`📦 Selected files staged successfully: ${selectedFiles.join(', ')}`);
+        } catch (error) {
+            throw new Error(`Failed to stage selected files: ${error.message}`);
+        }
+    }
+
     async commitAndPush(git, summary, description) {
         try {
             const commitMessage = description ? `${summary}\n\n${description}` : summary;
@@ -323,4 +340,4 @@ class GitManager {
     }
 }
 
-module.exports = { GitManager }; 
+module.exports = { GitManager };
