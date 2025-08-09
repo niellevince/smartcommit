@@ -97,7 +97,7 @@ class AIManager {
         // Build the structured request with selective filtering support
         const structuredRequest = {
             instructions: {
-                task: selectiveContext 
+                task: selectiveContext
                     ? `Generate a professional git commit message based on ONLY the code changes related to: "${selectiveContext}". Analyze all changes but only include files/changes that match this context.`
                     : "Generate a professional git commit message based on the provided code changes",
                 format: "Return a JSON object with the specified structure",
@@ -206,6 +206,7 @@ class AIManager {
                 breaking: parsed.breaking || false,
                 issues: parsed.issues || [],
                 changes: parsed.changes || [],
+                selectedFiles: parsed.selectedFiles || [],
                 fullMessage: description ? `${parsed.summary}\n\n${description.trim()}` : parsed.summary,
                 parseSuccess: true
             };
@@ -244,6 +245,7 @@ class AIManager {
                     breaking: false,
                     issues: [],
                     changes: [],
+                    selectedFiles: [],
                     fullMessage: description ? `${summary}\n\n${description.trim()}` : summary,
                     parseSuccess: false
                 };

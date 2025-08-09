@@ -180,8 +180,9 @@ class SmartCommit {
 
             // Stage changes before committing (selective or all)
             if (commitData.selectedFiles && commitData.selectedFiles.length > 0) {
+                console.log(`🔍 Selective commit: staging ${commitData.selectedFiles.length} file(s):`);
+                commitData.selectedFiles.forEach(file => console.log(`   📄 ${file}`));
                 await this.gitManager.stageSelectedFiles(git, commitData.selectedFiles);
-                console.log(`🔍 Selective commit: staged ${commitData.selectedFiles.length} file(s)`);
             } else {
                 await this.gitManager.stageAllChanges(git);
             }

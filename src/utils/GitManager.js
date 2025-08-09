@@ -297,6 +297,10 @@ class GitManager {
                 throw new Error('No files selected for staging');
             }
 
+            // First, reset the staging area to ensure only selected files are staged
+            await git.reset(['HEAD']);
+            this.logger.info('🔄 Reset staging area');
+
             // Stage each selected file individually
             for (const file of selectedFiles) {
                 await git.add(file);

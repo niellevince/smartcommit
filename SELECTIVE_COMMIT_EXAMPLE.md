@@ -8,10 +8,12 @@ The `--only` flag allows you to commit only the changes related to a specific co
 
 ## How It Works
 
-1. **AI Analysis**: The AI analyzes ALL your changes
-2. **Context Matching**: It identifies which files/changes match your specified context
-3. **Selective Staging**: Only the matching files are staged and committed
-4. **Focused Commits**: Creates clean, focused commits while leaving unrelated changes for later
+1. **Parse the `--only` flag**: SmartCommit extracts the selective context from the command line
+2. **Enhanced AI analysis**: The AI analyzes all changes but focuses on the specified context
+3. **Smart filtering**: The AI identifies which files are relevant to the selective context
+4. **Reset staging area**: Clears any previously staged files to ensure clean selective staging
+5. **Selective staging**: Only the AI-identified files are staged for commit
+6. **Targeted commit**: Creates a commit containing only the relevant changes
 
 ## Usage Examples
 
@@ -111,6 +113,25 @@ When using `--only`, the AI response includes a `selectedFiles` array:
 2. **Use Domain Language**: Reference specific components, modules, or features
 3. **Combine Wisely**: Use with `--additional` for extra context when needed
 4. **Review Before Committing**: Always review the selected files before confirming
+
+## Troubleshooting
+
+### What You'll See During Selective Commits
+
+When using `--only`, you'll see output like this:
+```
+🔍 Selective commit: staging 2 file(s):
+   📄 src/auth/login.js
+   📄 src/auth/session.js
+🔄 Reset staging area
+📦 Selected files staged successfully: src/auth/login.js, src/auth/session.js
+```
+
+### Common Issues
+
+- **No files selected**: The AI couldn't find files matching your context. Try being more specific or check if your changes actually relate to the context.
+- **Too many files selected**: Your context might be too broad. Use more specific terms.
+- **Wrong files selected**: The AI misunderstood your context. Try rephrasing or adding more specific keywords.
 
 ## Context Examples
 
