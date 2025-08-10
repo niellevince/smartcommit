@@ -71,11 +71,20 @@ class SmartCommit {
             args.splice(onlyIndex, 2);
         }
 
+        // Parse interactive staging flags
+        let interactiveMode = false;
+        const interactiveIndex = args.findIndex(arg => arg === '--interactive' || arg === '--patch');
+        if (interactiveIndex !== -1) {
+            interactiveMode = true;
+            // Remove the flag from args
+            args.splice(interactiveIndex, 1);
+        }
+
         const targetPath = args[0] || '.';
-        await this.processCommit(targetPath, additionalContext, radius, selectiveContext);
+        await this.processCommit(targetPath, additionalContext, radius, selectiveContext, interactiveMode);
     }
 
-    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null) {
+    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false) {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
@@ -103,6 +112,9 @@ class SmartCommit {
             if (selectiveContext) {
                 console.log(`🔍 Selective commit: "${selectiveContext}"`);
             }
+            if (interactiveMode) {
+                console.log(`🎨 Interactive staging mode: enabled`);
+            }
             if (radius !== 10) {
                 console.log(`📏 Context radius: ${radius} lines`);
             }
@@ -117,6 +129,34 @@ class SmartCommit {
             }
 
             console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
+
+            // Handle interactive staging if enabled
+            let stagedFiles = null;
+            if (interactiveMode) {
+                // Confirm interactive mode
+                const confirmed = await this.cli.confirmInteractiveMode();
+                if (!confirmed) {
+                    console.log('⏹️  Interactive staging cancelled.');
+                    process.exit(0);
+                }
+
+                // Let user select files for interactive staging
+                const selectedFiles = await this.cli.interactiveStaging(diffData.files);
+                
+                // Perform interactive staging
+                stagedFiles = await this.gitManager.stageInteractively(git, selectedFiles);
+                
+                // Get updated diff data after interactive staging
+                const updatedDiffData = await this.gitManager.getGitDiff(git, radius);
+                if (!updatedDiffData || updatedDiffData.files.length === 0) {
+                    console.log('✨ No changes were staged. Operation cancelled.');
+                    process.exit(0);
+                }
+                
+                // Use updated diffData to reflect only staged changes
+                Object.assign(diffData, updatedDiffData);
+                console.log(`\n📦 Interactive staging completed. ${stagedFiles.length} file(s) staged.\n`);
+            }
 
             // Generate and confirm commit message with retry logic (like original)
             let attempts = 0;
@@ -143,6 +183,12 @@ class SmartCommit {
 
                     // Add generation filename to commit data for tracking
                     commitData.generationFilename = generationFile;
+                    
+                    // Add interactive staging info if applicable
+                    if (interactiveMode && stagedFiles) {
+                        commitData.interactiveStaged = true;
+                        commitData.stagedFiles = stagedFiles;
+                    }
 
                     const confirmed = await this.cli.confirmCommit(commitData);
 
@@ -179,7 +225,10 @@ class SmartCommit {
             this.historyManager.updateGenerationStatus(generationFile, true);
 
             // Stage changes before committing (selective or all)
-            if (commitData.selectedFiles && commitData.selectedFiles.length > 0) {
+            // Skip staging if interactive mode was used (files already staged)
+            if (commitData.interactiveStaged) {
+                console.log(`🎨 Using interactively staged changes`);
+            } else if (commitData.selectedFiles && commitData.selectedFiles.length > 0) {
                 console.log(`🔍 Selective commit: staging ${commitData.selectedFiles.length} file(s):`);
                 commitData.selectedFiles.forEach(file => console.log(`   📄 ${file}`));
                 await this.gitManager.stageSelectedFiles(git, commitData.selectedFiles);
@@ -238,6 +287,8 @@ USAGE:
   smartc                                  Generate AI commit for current directory
   smartc --additional "context info"     Include additional context for AI
   smartc --only "context description"    Commit only changes related to specific context
+  smartc --interactive                    Interactive staging mode (select specific hunks/lines)
+  smartc --patch                          Interactive staging mode (alias for --interactive)
   smartc --help, -h                       Show this help message
   smartc --version, -v                    Show version information
   smartc --clean                          Clean all data and reset configuration
@@ -247,6 +298,8 @@ OPTIONS:
                                          more accurate commit messages
   --only "context"                       Commit only file edits related to specific context
                                          (AI analyzes all changes but commits only matching ones)
+  --interactive, --patch                  Enable interactive staging mode to select specific
+                                         hunks/lines before AI generation
   --radius N                              Set context radius (default: 10 lines around changes)
 
 EXAMPLES:
@@ -258,6 +311,9 @@ EXAMPLES:
   smartc --only "authentication fixes"    # Commit only auth-related changes
   smartc --only "UI styling updates"      # Commit only UI/styling changes
   smartc --only "database schema"         # Commit only database-related changes
+  smartc --interactive                    # Interactive staging mode
+  smartc --patch                          # Interactive staging mode (alias)
+  smartc --interactive --radius 5         # Interactive mode with smaller context
   smartc --radius 5                       # Use smaller context radius (5 lines)
   smartc --radius 20                      # Use larger context radius (20 lines)
   smartc --clean                          # Reset all configuration and history
@@ -270,6 +326,7 @@ FEATURES:
   🚀 Automatic staging and pushing
   📋 Additional context support for better accuracy
   🔍 Selective commits - commit only changes related to specific context
+  🎨 Interactive staging - select specific hunks/lines before AI generation
 
 SETUP:
   On first run, you'll be prompted for your Gemini API key.

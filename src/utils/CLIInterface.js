@@ -120,6 +120,51 @@ class CLIInterface {
         return selectedFiles;
     }
 
+    async interactiveStaging(files) {
+        console.log('\n🎨 Interactive Staging Mode');
+        console.log('Select which files to include in interactive patch selection:\n');
+        
+        const choices = files.map(file => ({
+            name: `${this.getStatusIcon(file.index, file.working_dir)} ${file.path}`,
+            value: file.path,
+            checked: file.working_dir !== '?' // Check modified files by default, not untracked
+        }));
+
+        const { selectedFiles } = await inquirer.prompt([
+            {
+                type: 'checkbox',
+                name: 'selectedFiles',
+                message: 'Select files for interactive patch staging:',
+                choices: choices,
+                validate: (answer) => {
+                    if (answer.length < 1) {
+                        return 'You must choose at least one file for interactive staging.';
+                    }
+                    return true;
+                }
+            }
+        ]);
+
+        return selectedFiles;
+    }
+
+    async confirmInteractiveMode() {
+        console.log('\n🎨 Interactive Staging');
+        console.log('This will open git\'s interactive patch mode for each selected file.');
+        console.log('You\'ll be able to select specific hunks/lines to stage.\n');
+        
+        const { confirmed } = await inquirer.prompt([
+            {
+                type: 'confirm',
+                name: 'confirmed',
+                message: 'Continue with interactive staging?',
+                default: true
+            }
+        ]);
+
+        return confirmed;
+    }
+
     getStatusIcon(index, workingDir) {
         if (index === 'A') return '🆕'; // Added
         if (index === 'M') return '📝'; // Modified
@@ -177,4 +222,4 @@ class CLIInterface {
     }
 }
 
-module.exports = { CLIInterface }; 
+module.exports = { CLIInterface };

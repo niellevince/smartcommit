@@ -312,6 +312,69 @@ class GitManager {
         }
     }
 
+    async stageInteractively(git, selectedFiles) {
+        try {
+            if (!selectedFiles || selectedFiles.length === 0) {
+                throw new Error('No files selected for interactive staging');
+            }
+
+            // First, reset the staging area to ensure clean state
+            await git.reset(['HEAD']);
+            this.logger.info('🔄 Reset staging area for interactive mode');
+
+            console.log('\n🎨 Starting interactive patch staging...');
+            console.log('For each file, you\'ll see hunks that you can choose to stage.');
+            console.log('Commands: y=yes, n=no, q=quit, a=all, d=none, s=split, e=edit\n');
+
+            // Use git add --patch for each selected file
+            for (const file of selectedFiles) {
+                console.log(`\n📝 Interactive staging for: ${file}`);
+                console.log('=' .repeat(50));
+                
+                try {
+                    // Use raw git command for interactive patch mode
+                    const { spawn } = require('child_process');
+                    
+                    await new Promise((resolve, reject) => {
+                        const gitProcess = spawn('git', ['add', '--patch', file], {
+                            stdio: 'inherit',
+                            cwd: git._baseDir
+                        });
+
+                        gitProcess.on('close', (code) => {
+                            if (code === 0) {
+                                resolve();
+                            } else {
+                                reject(new Error(`Interactive staging failed for ${file} with code ${code}`));
+                            }
+                        });
+
+                        gitProcess.on('error', (error) => {
+                            reject(new Error(`Failed to start interactive staging for ${file}: ${error.message}`));
+                        });
+                    });
+                    
+                    console.log(`✅ Interactive staging completed for: ${file}`);
+                } catch (error) {
+                    console.log(`⚠️  Skipped interactive staging for ${file}: ${error.message}`);
+                }
+            }
+
+            // Check what was actually staged
+            const status = await git.status();
+            const stagedFiles = status.files.filter(file => file.index && file.index !== ' ' && file.index !== '?');
+            
+            if (stagedFiles.length === 0) {
+                throw new Error('No changes were staged during interactive mode');
+            }
+
+            this.logger.info(`📦 Interactive staging completed. ${stagedFiles.length} file(s) have staged changes.`);
+            return stagedFiles.map(file => file.path);
+        } catch (error) {
+            throw new Error(`Interactive staging failed: ${error.message}`);
+        }
+    }
+
     async commitAndPush(git, summary, description) {
         try {
             const commitMessage = description ? `${summary}\n\n${description}` : summary;

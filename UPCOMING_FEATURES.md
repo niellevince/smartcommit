@@ -2,6 +2,23 @@
 
 We're continuously improving SmartCommit! Here are some exciting features planned for future releases:
 
+## **✅ Recently Implemented**
+
+### **🎨 Interactive Staging** *(Implemented)*
+
+**`--interactive`** or **`--patch`** - Interactive change selection
+
+```bash
+smartc --interactive
+# Opens interactive mode to select specific hunks/lines before AI generation
+```
+
+**Status**: ✅ **COMPLETED** - Available in current version
+
+---
+
+## **🚧 Planned Features**
+
 ## **🎯 Staging Control Flags**
 
 **`--staged`** - Only commit changes that are already staged
@@ -39,15 +56,6 @@ smartc --only "database schema changes"
 -   Identifies which files/changes match the provided context
 -   Creates focused commits with only related changes
 -   Leaves unrelated changes for separate commits
-
-## **🎨 Interactive Staging**
-
-**`--interactive`** or **`--patch`** - Interactive change selection
-
-```bash
-smartc --interactive
-# Opens interactive mode to select specific hunks/lines before AI generation
-```
 
 ## **📋 Advanced Context Options**
 

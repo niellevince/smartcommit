@@ -9,6 +9,7 @@ AI-powered git commit message generator using Google's Gemini API. Generate prof
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
 -   **Commit History Context**: Learns from your previous commits to generate better messages
 -   **Interactive CLI**: Choose to commit, regenerate, or cancel with a beautiful terminal interface
+-   **Interactive Staging**: Select specific hunks/lines before AI generation with `--interactive` or `--patch`
 -   **Global Installation**: Use `smartc` command anywhere in your system
 -   **Auto-staging**: Automatically stages all changes before committing
 -   **Smart Push**: Handles upstream branch setup automatically
@@ -65,6 +66,11 @@ smartc .
 # Control context radius for AI analysis
 smartc --radius 5    # Minimal context (5 lines around changes)
 smartc --radius 20   # Extended context (20 lines around changes)
+
+# Interactive staging - select specific hunks/lines
+smartc --interactive  # Interactive patch mode
+smartc --patch        # Alias for --interactive
+smartc --interactive --radius 5  # Interactive mode with minimal context
 ```
 
 ### Workflow
