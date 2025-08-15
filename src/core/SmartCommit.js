@@ -80,11 +80,20 @@ class SmartCommit {
             args.splice(interactiveIndex, 1);
         }
 
+        // Parse auto accept flag
+        let autoMode = false;
+        const autoIndex = args.findIndex(arg => arg === '--auto' || arg === '-a');
+        if (autoIndex !== -1) {
+            autoMode = true;
+            // Remove the flag from args
+            args.splice(autoIndex, 1);
+        }
+
         const targetPath = args[0] || '.';
-        await this.processCommit(targetPath, additionalContext, radius, selectiveContext, interactiveMode);
+        await this.processCommit(targetPath, additionalContext, radius, selectiveContext, interactiveMode, autoMode);
     }
 
-    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false) {
+    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false, autoMode = false) {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
@@ -114,6 +123,9 @@ class SmartCommit {
             }
             if (interactiveMode) {
                 console.log(`🎨 Interactive staging mode: enabled`);
+            }
+            if (autoMode) {
+                console.log(`🤖 Auto mode: enabled (will auto-accept generated commit)`);
             }
             if (radius !== 10) {
                 console.log(`📏 Context radius: ${radius} lines`);
@@ -190,7 +202,14 @@ class SmartCommit {
                         commitData.stagedFiles = stagedFiles;
                     }
 
-                    const confirmed = await this.cli.confirmCommit(commitData);
+                    let confirmed;
+                    if (autoMode) {
+                        // Auto-accept the generated commit
+                        console.log('🤖 Auto mode: Automatically accepting generated commit...');
+                        confirmed = { action: 'accept' };
+                    } else {
+                        confirmed = await this.cli.confirmCommit(commitData);
+                    }
 
                     if (confirmed.action === 'accept') {
                         await this.executeCommit(git, commitData, repoName, history, generationFile);
@@ -289,6 +308,7 @@ USAGE:
   smartc --only "context description"    Commit only changes related to specific context
   smartc --interactive                    Interactive staging mode (select specific hunks/lines)
   smartc --patch                          Interactive staging mode (alias for --interactive)
+  smartc --auto, -a                       Auto-accept generated commit (skip confirmation)
   smartc --help, -h                       Show this help message
   smartc --version, -v                    Show version information
   smartc --clean                          Clean all data and reset configuration
@@ -300,6 +320,7 @@ OPTIONS:
                                          (AI analyzes all changes but commits only matching ones)
   --interactive, --patch                  Enable interactive staging mode to select specific
                                          hunks/lines before AI generation
+  --auto, -a                              Auto-accept generated commit without confirmation
   --radius N                              Set context radius (default: 10 lines around changes)
 
 EXAMPLES:
@@ -313,6 +334,9 @@ EXAMPLES:
   smartc --only "database schema"         # Commit only database-related changes
   smartc --interactive                    # Interactive staging mode
   smartc --patch                          # Interactive staging mode (alias)
+  smartc --auto                           # Auto-accept generated commit
+  smartc -a                               # Auto-accept generated commit (short form)
+  smartc --auto --additional "hotfix"     # Auto-accept with additional context
   smartc --interactive --radius 5         # Interactive mode with smaller context
   smartc --radius 5                       # Use smaller context radius (5 lines)
   smartc --radius 20                      # Use larger context radius (20 lines)
@@ -322,6 +346,7 @@ FEATURES:
   ✨ AI-generated commit messages using Gemini API
   📝 Conventional commit format (feat, fix, docs, etc.)
   🔄 Interactive confirmation with regeneration option
+  🤖 Auto-accept mode for CI/CD and automated workflows
   📚 Learns from your commit history for better context
   🚀 Automatic staging and pushing
   📋 Additional context support for better accuracy
