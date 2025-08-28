@@ -96,21 +96,24 @@ class CLIInterface {
     }
 
     async selectFiles(files) {
+        console.log('\n📁 File Selection Mode');
+        console.log('Select which files to include in the commit:\n');
+        
         const choices = files.map(file => ({
             name: `${this.getStatusIcon(file.index, file.working_dir)} ${file.path}`,
             value: file.path,
-            checked: true
+            checked: file.working_dir !== '?' // Check modified files by default, not untracked
         }));
 
         const { selectedFiles } = await inquirer.prompt([
             {
                 type: 'checkbox',
                 name: 'selectedFiles',
-                message: 'Select files to stage:',
+                message: 'Select files to stage for commit:',
                 choices: choices,
                 validate: (answer) => {
                     if (answer.length < 1) {
-                        return 'You must choose at least one file.';
+                        return 'You must choose at least one file for the commit.';
                     }
                     return true;
                 }

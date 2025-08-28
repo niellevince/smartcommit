@@ -80,6 +80,21 @@ class SmartCommit {
             args.splice(interactiveIndex, 1);
         }
 
+        // Parse files selection flag
+        let filesMode = false;
+        const filesIndex = args.findIndex(arg => arg === '--files');
+        if (filesIndex !== -1) {
+            filesMode = true;
+            // Remove the flag from args
+            args.splice(filesIndex, 1);
+        }
+
+        // Validate that interactive and files modes are not used together
+        if (interactiveMode && filesMode) {
+            console.error('❌ Error: --interactive and --files flags cannot be used together');
+            process.exit(1);
+        }
+
         // Parse auto accept flag
         let autoMode = false;
         const autoIndex = args.findIndex(arg => arg === '--auto' || arg === '-a');
@@ -90,10 +105,10 @@ class SmartCommit {
         }
 
         const targetPath = args[0] || '.';
-        await this.processCommit(targetPath, additionalContext, radius, selectiveContext, interactiveMode, autoMode);
+        await this.processCommit(targetPath, additionalContext, radius, selectiveContext, interactiveMode, autoMode, filesMode);
     }
 
-    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false, autoMode = false) {
+    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false, autoMode = false, filesMode = false) {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
@@ -124,6 +139,9 @@ class SmartCommit {
             if (interactiveMode) {
                 console.log(`🎨 Interactive staging mode: enabled`);
             }
+            if (filesMode) {
+                console.log(`📁 File selection mode: enabled`);
+            }
             if (autoMode) {
                 console.log(`🤖 Auto mode: enabled (will auto-accept generated commit)`);
             }
@@ -144,6 +162,7 @@ class SmartCommit {
 
             // Handle interactive staging if enabled
             let stagedFiles = null;
+            let selectedFiles = null;
             if (interactiveMode) {
                 // Confirm interactive mode
                 const confirmed = await this.cli.confirmInteractiveMode();
@@ -153,7 +172,7 @@ class SmartCommit {
                 }
 
                 // Let user select files for interactive staging
-                const selectedFiles = await this.cli.interactiveStaging(diffData.files);
+                selectedFiles = await this.cli.interactiveStaging(diffData.files);
                 
                 // Perform interactive staging
                 stagedFiles = await this.gitManager.stageInteractively(git, selectedFiles);
@@ -168,6 +187,28 @@ class SmartCommit {
                 // Use updated diffData to reflect only staged changes
                 Object.assign(diffData, updatedDiffData);
                 console.log(`\n📦 Interactive staging completed. ${stagedFiles.length} file(s) staged.\n`);
+            } else if (filesMode) {
+                // Handle file selection mode
+                selectedFiles = await this.cli.selectFiles(diffData.files);
+                
+                if (!selectedFiles || selectedFiles.length === 0) {
+                    console.log('⏹️  No files selected. Operation cancelled.');
+                    process.exit(0);
+                }
+                
+                // Stage selected files
+                stagedFiles = await this.gitManager.stageSelectedFiles(git, selectedFiles);
+                
+                // Get updated diff data after staging selected files
+                const updatedDiffData = await this.gitManager.getGitDiff(git, radius);
+                if (!updatedDiffData || updatedDiffData.files.length === 0) {
+                    console.log('✨ No changes were staged. Operation cancelled.');
+                    process.exit(0);
+                }
+                
+                // Use updated diffData to reflect only staged changes
+                Object.assign(diffData, updatedDiffData);
+                console.log(`\n📁 File selection completed. ${selectedFiles.length} file(s) staged.\n`);
             }
 
             // Generate and confirm commit message with retry logic (like original)
@@ -196,10 +237,13 @@ class SmartCommit {
                     // Add generation filename to commit data for tracking
                     commitData.generationFilename = generationFile;
                     
-                    // Add interactive staging info if applicable
+                    // Add staging info if applicable
                     if (interactiveMode && stagedFiles) {
                         commitData.interactiveStaged = true;
                         commitData.stagedFiles = stagedFiles;
+                    } else if (filesMode && selectedFiles) {
+                        commitData.filesSelected = true;
+                        commitData.selectedFiles = selectedFiles;
                     }
 
                     let confirmed;
@@ -244,9 +288,11 @@ class SmartCommit {
             this.historyManager.updateGenerationStatus(generationFile, true);
 
             // Stage changes before committing (selective or all)
-            // Skip staging if interactive mode was used (files already staged)
+            // Skip staging if interactive mode or files mode was used (files already staged)
             if (commitData.interactiveStaged) {
                 console.log(`🎨 Using interactively staged changes`);
+            } else if (commitData.filesSelected) {
+                console.log(`📁 Using file selection staged changes`);
             } else if (commitData.selectedFiles && commitData.selectedFiles.length > 0) {
                 console.log(`🔍 Selective commit: staging ${commitData.selectedFiles.length} file(s):`);
                 commitData.selectedFiles.forEach(file => console.log(`   📄 ${file}`));
@@ -308,6 +354,7 @@ USAGE:
   smartc --only "context description"    Commit only changes related to specific context
   smartc --interactive                    Interactive staging mode (select specific hunks/lines)
   smartc --patch                          Interactive staging mode (alias for --interactive)
+  smartc --files                          File selection mode (select specific files to include)
   smartc --auto, -a                       Auto-accept generated commit (skip confirmation)
   smartc --help, -h                       Show this help message
   smartc --version, -v                    Show version information
@@ -320,6 +367,8 @@ OPTIONS:
                                          (AI analyzes all changes but commits only matching ones)
   --interactive, --patch                  Enable interactive staging mode to select specific
                                          hunks/lines before AI generation
+  --files                                 Enable file selection mode to select specific
+                                         files to include in commit
   --auto, -a                              Auto-accept generated commit without confirmation
   --radius N                              Set context radius (default: 10 lines around changes)
 
@@ -334,6 +383,7 @@ EXAMPLES:
   smartc --only "database schema"         # Commit only database-related changes
   smartc --interactive                    # Interactive staging mode
   smartc --patch                          # Interactive staging mode (alias)
+  smartc --files                          # File selection mode
   smartc --auto                           # Auto-accept generated commit
   smartc -a                               # Auto-accept generated commit (short form)
   smartc --auto --additional "hotfix"     # Auto-accept with additional context
@@ -352,12 +402,13 @@ FEATURES:
   📋 Additional context support for better accuracy
   🔍 Selective commits - commit only changes related to specific context
   🎨 Interactive staging - select specific hunks/lines before AI generation
+  📁 File selection - select specific files to include in commit
 
 SETUP:
   On first run, you'll be prompted for your Gemini API key.
   Get yours at: https://makersuite.google.com/app/apikey
 
-For more information, visit: https://github.com/yourrepo/smartcommit
+For more information, visit: https://github.com/niellevince/smartcommit
         `);
     }
 

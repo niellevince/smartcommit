@@ -307,6 +307,7 @@ class GitManager {
             }
 
             this.logger.info(`📦 Selected files staged successfully: ${selectedFiles.join(', ')}`);
+            return selectedFiles;
         } catch (error) {
             throw new Error(`Failed to stage selected files: ${error.message}`);
         }
