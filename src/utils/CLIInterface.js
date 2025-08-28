@@ -111,6 +111,7 @@ class CLIInterface {
                 name: 'selectedFiles',
                 message: 'Select files to stage for commit:',
                 choices: choices,
+                pageSize: 20,
                 validate: (answer) => {
                     if (answer.length < 1) {
                         return 'You must choose at least one file for the commit.';
