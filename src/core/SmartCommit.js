@@ -199,8 +199,8 @@ class SmartCommit {
                 // Stage selected files
                 stagedFiles = await this.gitManager.stageSelectedFiles(git, selectedFiles);
                 
-                // Get updated diff data after staging selected files
-                const updatedDiffData = await this.gitManager.getGitDiff(git, radius);
+                // Get updated diff data after staging selected files, filtered to only selected files
+                const updatedDiffData = await this.gitManager.getGitDiff(git, radius, selectedFiles);
                 if (!updatedDiffData || updatedDiffData.files.length === 0) {
                     console.log('✨ No changes were staged. Operation cancelled.');
                     process.exit(0);

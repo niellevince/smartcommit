@@ -28,7 +28,7 @@ class GitManager {
         return git;
     }
 
-    async getGitDiff(git, radius = 10) {
+    async getGitDiff(git, radius = 10, selectedFiles = null) {
         try {
             const status = await git.status();
 
@@ -36,17 +36,39 @@ class GitManager {
                 return null;
             }
 
-            const diff = await git.diff(['--cached']);
-            const diffAll = await git.diff();
+            // Filter files if selectedFiles is provided
+            let filteredFiles = status.files;
+            if (selectedFiles && selectedFiles.length > 0) {
+                filteredFiles = status.files.filter(file => selectedFiles.includes(file.path));
+                
+                if (filteredFiles.length === 0) {
+                    return null;
+                }
+            }
 
-            // Get contextual file contents with radius
-            const fileContents = await this.getFileContentsWithRadius(status.files, git, radius);
+            // Get diff data - filter by selected files if provided
+            let diff, diffAll;
+            if (selectedFiles && selectedFiles.length > 0) {
+                // Get diff only for selected files
+                diff = await git.diff(['--cached', '--', ...selectedFiles]);
+                diffAll = await git.diff(['--', ...selectedFiles]);
+            } else {
+                // Get all diffs
+                diff = await git.diff(['--cached']);
+                diffAll = await git.diff();
+            }
+
+            // Get contextual file contents with radius for filtered files only
+            const fileContents = await this.getFileContentsWithRadius(filteredFiles, git, radius);
 
             return {
-                status,
+                status: {
+                    ...status,
+                    files: filteredFiles
+                },
                 stagedDiff: diff,
                 unstagedDiff: diffAll,
-                files: status.files,
+                files: filteredFiles,
                 fileContents
             };
         } catch (error) {
