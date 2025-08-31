@@ -5,7 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2025-08-XX
+## [1.3.0] - 2025-08-31
+
+### Added
+- **Grouped Commits**: New `--grouped` flag to let the AI analyze all changes and generate a series of related commits.
+- **Interactive Grouped Commit Review**: When using `--grouped`, you can now review each generated commit individually and choose to "Accept", "Skip", or "Cancel".
+- **Skipped Commit Review**: Skipped commits are presented again for a final review after the initial pass-through.
+- **File Selection**: New `--files` flag to select specific files to be included in the commit.
+
+### Changed
+- The confirmation prompt for grouped commits now provides "Accept", "Skip", and "Cancel" options for more flexible review.
+- The `processGroupedCommit` function in `SmartCommit.js` was updated to handle the new "skip" logic.
+
+## [1.2.0] - 2025-08-15
 
 ### Added
 - **Auto-accept mode**: New `--auto` or `-a` flag for automatically accepting generated commits without user confirmation
@@ -17,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced help text with comprehensive auto mode documentation
 - Added auto mode to features list in help output
 
-## [1.0.1] - 2025-08-XX
+## [1.1.0] - 2025-08-01
 
 ### Initial Release
 - AI-powered git commit message generation using Google Gemini API
