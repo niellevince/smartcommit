@@ -10,6 +10,8 @@ AI-powered git commit message generator using Google's Gemini API. Generate prof
 -   **Commit History Context**: Learns from your previous commits to generate better messages
 -   **Interactive CLI**: Choose to commit, regenerate, or cancel with a beautiful terminal interface
 -   **Interactive Staging**: Select specific hunks/lines before AI generation with `--interactive` or `--patch`
+-   **File Selection**: Choose specific files to include in your commit with `--files`
+-   **Auto-Accept Mode**: Skip confirmation with `--auto` or `-a` for CI/CD workflows
 -   **Global Installation**: Use `smartc` command anywhere in your system
 -   **Auto-staging**: Automatically stages all changes before committing
 -   **Smart Push**: Handles upstream branch setup automatically
@@ -39,7 +41,7 @@ smartc
 git clone https://github.com/niellevince/smartcommit
 cd smartcommit
 npm install
-node index.js
+node src/cli.js
 ```
 
 ## Setup 🔧
@@ -71,12 +73,37 @@ smartc --radius 20   # Extended context (20 lines around changes)
 smartc --interactive  # Interactive patch mode
 smartc --patch        # Alias for --interactive
 smartc --interactive --radius 5  # Interactive mode with minimal context
+
+# File selection mode - select specific files to include
+smartc --files        # Select specific files for commit
+
+# Auto-accept generated commit (skip confirmation)
+smartc --auto         # Auto-accept generated commit
+smartc -a             # Short form for auto-accept
+```
+
+### Advanced Usage
+
+```bash
+# Include additional context for AI
+smartc --additional "Fixed the login bug by updating the authentication flow"
+
+# Commit only changes related to specific context
+smartc --only "login component refactoring"
+
+# Clean all data (reset configuration and history)
+smartc --clean
 ```
 
 ### Workflow
 
 1. Make your code changes
 2. Run `smartc` in your repository
+   - Use `--interactive` or `--patch` to select specific hunks/lines
+   - Use `--files` to select specific files
+   - Use `--additional "context"` to provide additional context
+   - Use `--only "context"` for selective commits
+   - Use `--auto` or `-a` to skip confirmation
 3. Review the AI-generated commit message
 4. Choose to:
     - ✅ Commit and push changes
@@ -267,12 +294,25 @@ rm data/<repo-name>.json
 
 ```
 smartcommit/
-├── index.js           # Main CLI application
-├── package.json       # Dependencies and bin config
-├── data/             # Config and history storage
-│   ├── config.json   # API key storage
-│   └── *.json        # Per-repo commit history
-└── README.md         # This file
+├── src/                          # Source code directory
+│   ├── cli.js                   # Main CLI entry point
+│   ├── core/                    # Core business logic
+│   │   └── SmartCommit.js       # Main orchestrator class
+│   ├── utils/                   # Utility modules
+│   │   ├── ConfigManager.js     # Configuration management
+│   │   ├── GitManager.js        # Git operations
+│   │   ├── AIManager.js         # AI/Gemini integration
+│   │   ├── HistoryManager.js    # History and generation tracking
+│   │   ├── CLIInterface.js      # User interaction
+│   │   └── Logger.js            # Logging utility
+│   └── constants/               # Application constants
+│       └── index.js             # Constants and configuration
+├── package.json                # Project metadata and dependencies
+├── data/                       # Config and history storage
+│   ├── config.json             # API key storage (gitignored)
+│   ├── generations/            # AI generation history
+│   └── *.json                  # Repository-specific history files
+└── README.md                   # This file
 ```
 
 ### Contributing

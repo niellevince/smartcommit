@@ -1,4 +1,5 @@
 const path = require('path');
+const { Command } = require('commander');
 const { ConfigManager } = require('../utils/ConfigManager');
 const { GitManager } = require('../utils/GitManager');
 const { AIManager } = require('../utils/AIManager');
@@ -18,94 +19,61 @@ class SmartCommit {
     }
 
     async run() {
-        const args = process.argv.slice(2);
+        const program = new Command();
+        
+        program
+            .name('smartc')
+            .description('🚀 SmartCommit - AI-Powered Git Commit Generator')
+            .version(this.getVersion(), '-v, --version', 'Show version information')
+            .helpOption('-h, --help', 'Show this help message')
+            .option('--clean', 'Clean all data and reset configuration')
+            .option('--additional <context>', 'Provide additional context to help AI generate more accurate commit messages')
+            .option('--radius <number>', 'Set context radius (default: 10 lines around changes)', (value) => {
+                const parsedValue = parseInt(value);
+                if (isNaN(parsedValue) || parsedValue <= 0) {
+                    console.error('❌ Error: --radius must be a positive number');
+                    process.exit(1);
+                }
+                return parsedValue;
+            }, 10)
+            .option('--only <context>', 'Commit only file edits related to specific context')
+            .option('--interactive', 'Interactive staging mode (select specific hunks/lines)')
+            .option('--patch', 'Interactive staging mode (alias for --interactive)')
+            .option('--files', 'File selection mode (select specific files to include)')
+            .option('-a, --auto', 'Auto-accept generated commit (skip confirmation)')
+            .argument('[path]', 'Repository path', '.');
 
-        // Handle help command
-        if (args.includes('--help') || args.includes('-h')) {
-            this.showHelp();
-            return;
-        }
+        program.addHelpText('after', this.getHelpText());
 
-        // Handle version command
-        if (args.includes('--version') || args.includes('-v')) {
-            this.showVersion();
-            return;
-        }
+        program.parse(process.argv);
+
+        const options = program.opts();
+        const targetPath = program.args[0] || '.';
 
         // Handle clean command
-        if (args.includes('--clean')) {
+        if (options.clean) {
             await this.cleanData();
             return;
         }
 
-        // Parse additional context flag (like original)
-        let additionalContext = null;
-        const additionalIndex = args.findIndex(arg => arg === '--additional');
-        if (additionalIndex !== -1 && args[additionalIndex + 1]) {
-            additionalContext = args[additionalIndex + 1];
-            // Remove the flag and its value from args
-            args.splice(additionalIndex, 2);
-        }
-
-        // Parse radius flag
-        let radius = 10; // Default radius
-        const radiusIndex = args.findIndex(arg => arg === '--radius');
-        if (radiusIndex !== -1 && args[radiusIndex + 1]) {
-            const radiusValue = parseInt(args[radiusIndex + 1]);
-            if (!isNaN(radiusValue) && radiusValue > 0) {
-                radius = radiusValue;
-            } else {
-                console.error('❌ Error: --radius must be a positive number');
-                process.exit(1);
-            }
-            // Remove the flag and its value from args
-            args.splice(radiusIndex, 2);
-        }
-
-        // Parse selective commit flag
-        let selectiveContext = null;
-        const onlyIndex = args.findIndex(arg => arg === '--only');
-        if (onlyIndex !== -1 && args[onlyIndex + 1]) {
-            selectiveContext = args[onlyIndex + 1];
-            // Remove the flag and its value from args
-            args.splice(onlyIndex, 2);
-        }
-
-        // Parse interactive staging flags
-        let interactiveMode = false;
-        const interactiveIndex = args.findIndex(arg => arg === '--interactive' || arg === '--patch');
-        if (interactiveIndex !== -1) {
-            interactiveMode = true;
-            // Remove the flag from args
-            args.splice(interactiveIndex, 1);
-        }
-
-        // Parse files selection flag
-        let filesMode = false;
-        const filesIndex = args.findIndex(arg => arg === '--files');
-        if (filesIndex !== -1) {
-            filesMode = true;
-            // Remove the flag from args
-            args.splice(filesIndex, 1);
-        }
-
         // Validate that interactive and files modes are not used together
-        if (interactiveMode && filesMode) {
+        if (options.interactive && options.files) {
             console.error('❌ Error: --interactive and --files flags cannot be used together');
             process.exit(1);
         }
 
-        // Parse auto accept flag
-        let autoMode = false;
-        const autoIndex = args.findIndex(arg => arg === '--auto' || arg === '-a');
-        if (autoIndex !== -1) {
-            autoMode = true;
-            // Remove the flag from args
-            args.splice(autoIndex, 1);
-        }
-
-        const targetPath = args[0] || '.';
-        await this.processCommit(targetPath, additionalContext, radius, selectiveContext, interactiveMode, autoMode, filesMode);
+        // Determine interactive mode (either --interactive or --patch)
+        const interactiveMode = options.interactive || options.patch || false;
+        
+        await this.processCommit(
+            targetPath, 
+            options.additional, 
+            options.radius, 
+            options.only, 
+            interactiveMode, 
+            options.auto, 
+            options.files
+        );
     }
 
     async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false, autoMode = false, filesMode = false) {
@@ -343,35 +311,8 @@ class SmartCommit {
         }
     }
 
-    showHelp() {
-        console.log(`
-🚀 SmartCommit - AI-Powered Git Commit Generator
-
-USAGE:
-  smartc [path]                           Generate AI commit for repository at path
-  smartc                                  Generate AI commit for current directory
-  smartc --additional "context info"     Include additional context for AI
-  smartc --only "context description"    Commit only changes related to specific context
-  smartc --interactive                    Interactive staging mode (select specific hunks/lines)
-  smartc --patch                          Interactive staging mode (alias for --interactive)
-  smartc --files                          File selection mode (select specific files to include)
-  smartc --auto, -a                       Auto-accept generated commit (skip confirmation)
-  smartc --help, -h                       Show this help message
-  smartc --version, -v                    Show version information
-  smartc --clean                          Clean all data and reset configuration
-
-OPTIONS:
-  --additional "text"                     Provide additional context to help AI generate
-                                         more accurate commit messages
-  --only "context"                       Commit only file edits related to specific context
-                                         (AI analyzes all changes but commits only matching ones)
-  --interactive, --patch                  Enable interactive staging mode to select specific
-                                         hunks/lines before AI generation
-  --files                                 Enable file selection mode to select specific
-                                         files to include in commit
-  --auto, -a                              Auto-accept generated commit without confirmation
-  --radius N                              Set context radius (default: 10 lines around changes)
-
+    getHelpText() {
+        return `
 EXAMPLES:
   smartc                                  # Commit changes in current directory
   smartc .                                # Commit changes in current directory
@@ -409,12 +350,12 @@ SETUP:
   Get yours at: https://makersuite.google.com/app/apikey
 
 For more information, visit: https://github.com/niellevince/smartcommit
-        `);
+        `;
     }
 
-    showVersion() {
+    getVersion() {
         const packageJson = require('../../package.json');
-        console.log(`SmartCommit v${packageJson.version}`);
+        return packageJson.version;
     }
 }
 
