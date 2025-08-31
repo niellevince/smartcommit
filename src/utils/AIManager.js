@@ -59,6 +59,125 @@ class AIManager {
         }
     }
 
+    async generateGroupedCommits(diffData, apiKey, repoName) {
+        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+            try {
+                this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating grouped commits...`);
+
+                const ai = new GoogleGenAI({ apiKey });
+
+                const request = this.buildGroupedRequest(diffData);
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: request
+                });
+                const text = response.text;
+
+                const commits = this.parseGroupedCommits(text);
+
+                if (commits && commits.length > 0) {
+                    this.logger.success(`✅ Grouped commits generated successfully on attempt ${attempt}`);
+                    return commits;
+                }
+
+                throw new Error('Generated grouped commits could not be parsed or were empty');
+
+            } catch (error) {
+                this.logger.warn(`⚠️  Attempt ${attempt} failed: ${error.message}`);
+
+                if (attempt === this.maxRetries) {
+                    throw new Error(`Failed to generate grouped commits after ${this.maxRetries} attempts. Last error: ${error.message}`);
+                }
+
+                const delay = Math.pow(2, attempt) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    buildGroupedRequest(diffData) {
+        const { files, fileContents } = diffData;
+
+        const filesData = {};
+        files.forEach(file => {
+            const content = fileContents[file.path] || '[Unable to read file]';
+            const truncatedContent = content && content.length > 2000
+                ? content.substring(0, 2000) + '\n\n[Content truncated - showing first 2000 characters]'
+                : content;
+
+            filesData[file.path] = {
+                status: {
+                    index: file.index || null,
+                    workingDir: file.working_dir || null,
+                    statusDescription: this.getStatusDescription(file.index, file.working_dir)
+                },
+                content: truncatedContent,
+                path: file.path,
+                isBinary: this.isBinaryFile(file.path),
+                size: content ? content.length : 0
+            };
+        });
+
+        const structuredRequest = {
+            instructions: {
+                task: "Analyze the provided code changes and group them into a series of related commits. Each commit should represent a logical unit of work.",
+                format: "Return a JSON array of commit objects, where each object has the specified structure.",
+                guidelines: [
+                    "Each commit object must have a 'summary', 'description', and 'files' array.",
+                    "The 'files' array should contain the file paths related to that commit.",
+                    "Each file should only appear in one commit group.",
+                    "Use conventional commit types: feat, fix, docs, style, refactor, test, chore",
+                    "Keep summary under 50 characters",
+                    "Use present tense ('add' not 'added')",
+                    "Be specific about what changed",
+                    "Explain the 'why' in the description",
+                ],
+                outputFormat: [
+                    {
+                        summary: "<type>(<scope>): <description>",
+                        description: "<detailed explanation of what was changed and why>",
+                        files: ["<file1.js>", "<file2.js>"]
+                    }
+                ]
+            },
+            context: {
+                repository: this.getRepoName(),
+                changedFilesCount: files.length,
+            },
+            diff: {
+                staged: diffData.stagedDiff || '',
+                unstaged: diffData.unstagedDiff || ''
+            },
+            files: filesData
+        };
+
+        return JSON.stringify(structuredRequest, null, 2);
+    }
+
+    parseGroupedCommits(aiResponse) {
+        try {
+            let cleanedResponse = aiResponse.trim();
+
+            if (cleanedResponse.startsWith('```json')) {
+                cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanedResponse.startsWith('```')) {
+                cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
+            const parsed = JSON.parse(cleanedResponse);
+
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+                throw new Error('AI response is not a valid array of commits');
+            }
+
+            return parsed;
+
+        } catch (error) {
+            this.logger.warn('⚠️  Failed to parse JSON response for grouped commits.');
+            return null;
+        }
+    }
+
     buildStructuredRequest(diffData, history, additionalContext = null, selectiveContext = null) {
         const { files, fileContents } = diffData;
 
