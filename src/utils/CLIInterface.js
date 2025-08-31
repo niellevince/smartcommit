@@ -62,16 +62,21 @@ class CLIInterface {
 
         console.log(); // Empty line
 
-        const { confirmed } = await inquirer.prompt([
+        const { action } = await inquirer.prompt([
             {
-                type: 'confirm',
-                name: 'confirmed',
-                message: 'Accept this commit?',
-                default: true
+                type: 'list',
+                name: 'action',
+                message: 'What would you like to do?',
+                choices: [
+                    { name: '✅ Accept this commit', value: 'accept' },
+                    { name: '⏭️  Skip for now', value: 'skip' },
+                    { name: '❌ Cancel operation', value: 'cancel' }
+                ],
+                default: 'accept'
             }
         ]);
 
-        return confirmed;
+        return action;
     }
 
     async getAdditionalContext() {

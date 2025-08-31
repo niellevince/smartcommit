@@ -114,12 +114,30 @@ class SmartCommit {
 
             console.log(`🤖 AI has suggested ${groupedCommits.length} commit(s).`);
 
+            const skippedCommits = [];
+
             for (const commit of groupedCommits) {
-                const confirmed = await this.cli.confirmGroupedCommit(commit);
-                if (confirmed) {
+                const action = await this.cli.confirmGroupedCommit(commit);
+
+                if (action === 'accept') {
                     await this.executeCommit(git, commit, repoName, [], null);
-                } else {
-                    console.log('Skipping commit.');
+                } else if (action === 'skip') {
+                    skippedCommits.push(commit);
+                } else if (action === 'cancel') {
+                    console.log('❌ Operation cancelled.');
+                    process.exit(0);
+                }
+            }
+
+            if (skippedCommits.length > 0) {
+                console.log('\n🔄 Reviewing skipped commits...\n');
+                for (const commit of skippedCommits) {
+                    const action = await this.cli.confirmGroupedCommit(commit);
+                    if (action === 'accept') {
+                        await this.executeCommit(git, commit, repoName, [], null);
+                    } else {
+                        console.log('Skipping commit.');
+                    }
                 }
             }
 
