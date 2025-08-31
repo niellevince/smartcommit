@@ -45,6 +45,35 @@ class CLIInterface {
         return { action };
     }
 
+    async confirmGroupedCommit(commitData) {
+        const { summary, description, files } = commitData;
+
+        console.log('\n🤖 Proposed Commit:\n');
+        console.log(`Summary: ${summary}`);
+
+        if (description) {
+            console.log(`\nDescription:\n${description}`);
+        }
+
+        if (files && files.length > 0) {
+            console.log(`\nFiles to be included in this commit:`);
+            files.forEach(file => console.log(`  - ${file}`));
+        }
+
+        console.log(); // Empty line
+
+        const { confirmed } = await inquirer.prompt([
+            {
+                type: 'confirm',
+                name: 'confirmed',
+                message: 'Accept this commit?',
+                default: true
+            }
+        ]);
+
+        return confirmed;
+    }
+
     async getAdditionalContext() {
         const { context } = await inquirer.prompt([
             {
