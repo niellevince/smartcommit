@@ -41,6 +41,7 @@ class SmartCommit {
             .option('--patch', 'Interactive staging mode (alias for --interactive)')
             .option('--files', 'File selection mode (select specific files to include)')
             .option('-a, --auto', 'Auto-accept generated commit (skip confirmation)')
+            .option('--grouped', 'Group changes into related commits')
             .argument('[path]', 'Repository path', '.');
 
         program.addHelpText('after', this.getHelpText());
@@ -62,6 +63,11 @@ class SmartCommit {
             process.exit(1);
         }
 
+        if (options.grouped) {
+            await this.processGroupedCommit(targetPath, options.radius);
+            return;
+        }
+
         // Determine interactive mode (either --interactive or --patch)
         const interactiveMode = options.interactive || options.patch || false;
         
@@ -74,6 +80,53 @@ class SmartCommit {
             options.auto, 
             options.files
         );
+    }
+
+    async processGroupedCommit(targetPath, radius = 10) {
+        try {
+            console.log('🔍 SmartCommit - Grouped Commits\n');
+
+            const git = this.gitManager.initGit(targetPath);
+            const isRepo = await git.checkIsRepo();
+            if (!isRepo) {
+                console.error('❌ Error: Not a git repository!');
+                process.exit(1);
+            }
+
+            const config = await this.configManager.loadConfig();
+            const repoName = this.gitManager.getRepoName(targetPath);
+
+            console.log('🔍 Checking for changes...');
+            const diffData = await this.gitManager.getGitDiff(git, radius);
+            if (!diffData) {
+                console.log('✨ No changes detected. Repository is clean!');
+                process.exit(0);
+            }
+
+            console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
+
+            const groupedCommits = await this.aiManager.generateGroupedCommits(diffData, config.GEMINI_API_KEY, repoName);
+
+            if (!groupedCommits || groupedCommits.length === 0) {
+                console.log('🤖 AI could not group the changes. Please try again.');
+                process.exit(0);
+            }
+
+            console.log(`🤖 AI has suggested ${groupedCommits.length} commit(s).`);
+
+            for (const commit of groupedCommits) {
+                const confirmed = await this.cli.confirmGroupedCommit(commit);
+                if (confirmed) {
+                    await this.executeCommit(git, commit, repoName, [], null);
+                } else {
+                    console.log('Skipping commit.');
+                }
+            }
+
+        } catch (error) {
+            console.error(`\n❌ Error: ${error.message}`);
+            process.exit(1);
+        }
     }
 
     async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false, autoMode = false, filesMode = false) {
@@ -253,7 +306,9 @@ class SmartCommit {
     async executeCommit(git, commitData, repoName, history, generationFile) {
         try {
             // Update generation status to accepted (like original)
-            this.historyManager.updateGenerationStatus(generationFile, true);
+            if (generationFile) {
+                this.historyManager.updateGenerationStatus(generationFile, true);
+            }
 
             // Stage changes before committing (selective or all)
             // Skip staging if interactive mode or files mode was used (files already staged)
@@ -265,6 +320,10 @@ class SmartCommit {
                 console.log(`🔍 Selective commit: staging ${commitData.selectedFiles.length} file(s):`);
                 commitData.selectedFiles.forEach(file => console.log(`   📄 ${file}`));
                 await this.gitManager.stageSelectedFiles(git, commitData.selectedFiles);
+            } else if (commitData.files && commitData.files.length > 0) {
+                console.log(`📦 Staging ${commitData.files.length} file(s) for this commit:`);
+                commitData.files.forEach(file => console.log(`   📄 ${file}`));
+                await this.gitManager.stageSelectedFiles(git, commitData.files);
             } else {
                 await this.gitManager.stageAllChanges(git);
             }
