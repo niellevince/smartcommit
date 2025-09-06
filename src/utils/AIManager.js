@@ -1,5 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 const { Logger } = require('./Logger');
+const { GROUPED_COMMITS_PROMPT } = require('../prompts/groupedCommits');
+const { buildCommitMessageInstructions } = require('../prompts/commitMessage');
 
 class AIManager {
     constructor() {
@@ -119,27 +121,7 @@ class AIManager {
         });
 
         const structuredRequest = {
-            instructions: {
-                task: "Analyze the provided code changes and group them into a series of related commits. Each commit should represent a logical unit of work.",
-                format: "Return a JSON array of commit objects, where each object has the specified structure.",
-                guidelines: [
-                    "Each commit object must have a 'summary', 'description', and 'files' array.",
-                    "The 'files' array should contain the file paths related to that commit.",
-                    "Each file should only appear in one commit group.",
-                    "Use conventional commit types: feat, fix, docs, style, refactor, test, chore",
-                    "Keep summary under 50 characters",
-                    "Use present tense ('add' not 'added')",
-                    "Be specific about what changed",
-                    "Explain the 'why' in the description",
-                ],
-                outputFormat: [
-                    {
-                        summary: "<type>(<scope>): <description>",
-                        description: "<detailed explanation of what was changed and why>",
-                        files: ["<file1.js>", "<file2.js>"]
-                    }
-                ]
-            },
+            instructions: GROUPED_COMMITS_PROMPT.instructions,
             context: {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
@@ -215,43 +197,7 @@ class AIManager {
 
         // Build the structured request with selective filtering support
         const structuredRequest = {
-            instructions: {
-                task: selectiveContext
-                    ? `Generate a professional git commit message based on ONLY the code changes related to: "${selectiveContext}". Analyze all changes but only include files/changes that match this context.`
-                    : "Generate a professional git commit message based on the provided code changes",
-                format: "Return a JSON object with the specified structure",
-                guidelines: [
-                    "Use conventional commit types: feat, fix, docs, style, refactor, test, chore",
-                    "Keep summary under 50 characters",
-                    "Use present tense ('add' not 'added')",
-                    "Be specific about what changed",
-                    "Explain the 'why' in the description",
-                    "Focus on the business value or problem solved",
-                    "Analyze the full file contents to understand the complete context",
-                    "Set 'breaking' to true only for breaking changes",
-                    "Include issue numbers in 'issues' array if this fixes any issues",
-                    additionalContext ? "Pay special attention to the additional context provided by the user" : null,
-                    selectiveContext ? `IMPORTANT: Only commit changes related to "${selectiveContext}". Identify which files/changes match this context and include only those in the commit. Add a 'selectedFiles' array listing the files that should be committed.` : null
-                ].filter(Boolean),
-                outputFormat: selectiveContext ? {
-                    summary: "<type>(<scope>): <description>",
-                    description: "<detailed explanation of what was changed and why>",
-                    changes: ["<specific change 1>", "<specific change 2>", "<specific change 3>"],
-                    type: "<commit type>",
-                    scope: "<commit scope>",
-                    breaking: false,
-                    issues: ["<issue-number>"],
-                    selectedFiles: ["<file1.js>", "<file2.js>"]
-                } : {
-                    summary: "<type>(<scope>): <description>",
-                    description: "<detailed explanation of what was changed and why>",
-                    changes: ["<specific change 1>", "<specific change 2>", "<specific change 3>"],
-                    type: "<commit type>",
-                    scope: "<commit scope>",
-                    breaking: false,
-                    issues: ["<issue-number>"]
-                }
-            },
+            instructions: buildCommitMessageInstructions(selectiveContext, additionalContext),
             context: {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
