@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-09-06
+
+### Changed
+- **Code Refactoring**: Extracted inline AI prompts into dedicated `src/prompts/` directory for better maintainability
+- **Improved Organization**: Created separate prompt files (`groupedCommits.js`, `commitMessage.js`, `templates.js`) for easier editing
+- **Enhanced Maintainability**: Prompts can now be modified without touching core business logic
+
 ## [1.3.0] - 2025-08-31
 
 ### Added
