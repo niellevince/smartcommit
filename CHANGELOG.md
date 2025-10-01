@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-10-01
+
+### 🚨 BREAKING CHANGES
+- **API Migration**: Migrated from Google Gemini API to OpenRouter API
+- **Configuration Key**: Changed `GEMINI_API_KEY` to `OPENROUTER_API_KEY` in config
+- **Model Names**: Updated to OpenRouter model naming convention
+- **Default Model**: Changed to `x-ai/grok-2-flash:free` (free tier)
+
+### ✨ Added
+- **Multiple AI Model Support**: Support for Claude, GPT-4, Gemini, Llama, Qwen, and more via OpenRouter
+- **Free Tier Support**: X.AI Grok models available completely free
+- **Custom Model Input**: Allow users to specify any OpenRouter-supported model
+- **Model Selection UI**: Interactive model selection during setup
+- **Model Override Flag**: New `--model` flag to override configured AI model for specific runs
+- **API Test Command**: New `--test` flag to verify API connection and model functionality
+- **Enhanced Error Handling**: Better error messages for OpenRouter API failures
+
+### 🔄 Changed
+- **API Endpoint**: Changed to OpenRouter REST API (`https://openrouter.ai/api/v1/chat/completions`)
+- **Request Format**: Updated to OpenAI-compatible message format
+- **Dependencies**: Removed `@google/genai`, added `axios` for HTTP requests
+- **Help Text**: Updated to reflect OpenRouter integration and multiple models
+- **Setup Process**: Enhanced with model selection and OpenRouter key instructions
+
+### 📚 Documentation
+- **README.md**: Complete rewrite with OpenRouter information and model details
+- **Help Text**: Updated with new API information and supported models
+- **Setup Instructions**: Changed to OpenRouter key acquisition
+- **Migration Guide**: Added comprehensive migration guide for existing users
+
+### 🐛 Fixed
+- **API Compatibility**: Resolved compatibility issues with new API format
+- **Error Handling**: Improved retry logic and error messages
+- **Model Validation**: Better validation for custom model names
+
 ## [1.3.1] - 2025-09-06
 
 ### Changed

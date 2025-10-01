@@ -15,6 +15,40 @@ smartc --interactive
 
 **Status**: ✅ **COMPLETED** - Available in current version
 
+### **🔍 Selective Commit Flag** *(Implemented)*
+
+**`--only "context description"`** - Commit only file edits related to specific context
+
+```bash
+smartc --only "authentication fixes"
+# AI will analyze all changes but only commit files/changes related to authentication
+
+smartc --only "UI styling updates"
+# Only commits changes related to UI/styling, ignoring unrelated modifications
+
+smartc --only "database schema changes"
+# Groups and commits only database-related changes from your modifications
+```
+
+**Status**: ✅ **COMPLETED** - Available in current version
+
+### **🤖 Model Override Flag** *(Implemented)*
+
+**`--model "model-name"`** - Override the configured AI model for specific runs
+
+```bash
+smartc --model anthropic/claude-3.5-sonnet
+# Use Claude for complex analysis
+
+smartc --model openai/gpt-4o
+# Use GPT-4o for this specific commit
+
+smartc --model x-ai/grok-4-fast:free
+# Use free Grok model
+```
+
+**Status**: ✅ **COMPLETED** - Available in current version
+
 ---
 
 ## **🚧 Planned Features**
@@ -35,28 +69,6 @@ smartc --unstaged
 # Stages and commits only unstaged changes, preserves existing staged changes
 ```
 
-## **🔍 Selective Commit Flag**
-
-**`--only "context description"`** - Commit only file edits related to specific context
-
-```bash
-smartc --only "authentication fixes"
-# AI will analyze all changes but only commit files/changes related to authentication
-
-smartc --only "UI styling updates"
-# Only commits changes related to UI/styling, ignoring unrelated modifications
-
-smartc --only "database schema changes"
-# Groups and commits only database-related changes from your modifications
-```
-
-**How `--only` works:**
-
--   AI analyzes all your changes
--   Identifies which files/changes match the provided context
--   Creates focused commits with only related changes
--   Leaves unrelated changes for separate commits
-
 ## **📋 Advanced Context Options**
 
 **`--template "template-name"`** - Use predefined commit templates
@@ -75,19 +87,6 @@ smartc --scope "auth"
 ```
 
 ## **🤖 Multi-Provider AI Support**
-
-**`--model "model-name"`** - Choose specific AI models
-
-```bash
-smartc --model "gemini-2.0-flash-exp"
-# Use experimental Gemini model
-
-smartc --model "gemini-1.5-pro"
-# Use Gemini Pro for more complex analysis
-
-smartc --model "claude-3-sonnet"
-# Use Anthropic Claude (when supported)
-```
 
 **`--provider "provider-name"`** - Switch between AI providers
 
@@ -108,21 +107,20 @@ smartc --provider "azure"
 **Configuration Support:**
 
 ```bash
-# Set default model/provider
-smartc config set-model "gemini-2.0-flash-exp"
+# Set default provider
 smartc config set-provider "anthropic"
 
-# List available models
-smartc config list-models
+# List available providers
+smartc config list-providers
 
-# Test model performance
-smartc config test-model "claude-3-sonnet"
+# Test provider connectivity
+smartc config test-provider "anthropic"
 ```
 
 **Multi-Provider Benefits:**
 
--   **Cost Optimization**: Choose cheaper models for simple commits
--   **Quality Control**: Use premium models for complex changes
+-   **Cost Optimization**: Switch between providers for different pricing tiers
+-   **Quality Control**: Use premium providers for complex changes
 -   **Redundancy**: Fallback to different providers if one is down
 -   **Local Privacy**: Use local Ollama models for sensitive repositories
 -   **Enterprise**: Use Azure/AWS hosted models for corporate compliance

@@ -1,10 +1,12 @@
 # SmartCommit 🚀
 
-AI-powered git commit message generator using Google's Gemini API. Generate professional, contextual commit messages automatically based on your code changes.
+AI-powered git commit message generator using OpenRouter API. Generate professional, contextual commit messages automatically using multiple AI models including Grok, Claude, GPT-4, Gemini, and more.
 
 ## Features ✨
 
--   **AI-Generated Commits**: Uses Gemini 2.5 Flash to analyze your changes and create meaningful commit messages
+-   **Multiple AI Models**: Choose from Grok (free), Claude, GPT-4, Gemini, Llama, and more via OpenRouter
+-   **Free Tier Available**: Use X.AI Grok models completely free
+-   **AI-Generated Commits**: Analyze your changes and create meaningful commit messages
 -   **Smart Context Radius**: Only sends relevant code lines to AI (90% faster, 90% cost reduction)
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
 -   **Commit History Context**: Learns from your previous commits to generate better messages
@@ -47,12 +49,26 @@ node src/cli.js
 
 ## Setup 🔧
 
-On first run, SmartCommit will prompt you for your Gemini API key:
+On first run, SmartCommit will prompt you for your OpenRouter API key:
 
-1. Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+1. Get your API key from [OpenRouter](https://openrouter.ai/keys)
 2. Run `smartc` in any git repository
 3. Enter your API key when prompted
-4. Your key will be securely saved in `data/config.json`
+4. Select your preferred AI model (Grok free tier recommended)
+5. Your configuration will be securely saved in `data/config.json`
+
+### Supported AI Models 🤖
+
+SmartCommit supports multiple AI models through OpenRouter:
+
+- **X.AI Grok 4 Fast (Free)** - Default model, completely free tier available
+- **Anthropic Claude 3.5 Sonnet** - Excellent for code analysis and commit messages
+- **OpenAI GPT-4o** - Powerful general-purpose model
+- **OpenAI GPT-4o Mini** - Fast and cost-effective
+- **Google Gemini 2.5 Flash** - Google's latest model via OpenRouter
+- **Meta Llama 3.3 70B** - Open-source model with strong performance
+- **Qwen 2.5 72B** - Alibaba's advanced model
+- **Custom Models** - Any OpenRouter-supported model
 
 ## Usage 💻
 
@@ -65,6 +81,14 @@ smartc
 # Or specify a path
 smartc /path/to/your/repo
 smartc .
+
+# Test API connection (recommended first step)
+smartc --test         # Test API connection with hello message
+
+# Use different AI models for specific commits
+smartc --model anthropic/claude-3.5-sonnet  # Use Claude for complex analysis
+smartc --model openai/gpt-4o               # Use GPT-4o for this commit
+smartc --model x-ai/grok-4-fast:free       # Use free Grok model
 
 # Control context radius for AI analysis
 smartc --radius 5    # Minimal context (5 lines around changes)
@@ -201,7 +225,7 @@ Closes #42
 
 ### Config File Location
 
--   `data/config.json` - Stores your Gemini API key
+-   `data/config.json` - Stores your OpenRouter API key and model preferences
 -   `data/<repo-name>.json` - Stores commit history for each repository
 
 ### History Tracking
@@ -267,9 +291,9 @@ Closes #127
 -   Ensure you're in a git repository directory
 -   Run `git init` if needed
 
-**"Invalid Gemini API key" error**
+**"Invalid OpenRouter API key" error**
 
--   Verify your API key at Google AI Studio
+-   Verify your API key at OpenRouter dashboard
 -   Delete `data/config.json` and run setup again
 
 **"No changes detected"**
@@ -347,5 +371,5 @@ For issues, feature requests, or questions:
 
 ---
 
-**Made with ❤️ and AI** - SmartCommit helps you write better commit messages effortlessly!
-Enhanced with complete generation tracking
+**Made with ❤️ and AI** - SmartCommit helps you write better commit messages effortlessly using multiple AI models!
+Enhanced with complete generation tracking and OpenRouter integration
