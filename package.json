@@ -1,7 +1,7 @@
 {
     "name": "smartcommit",
-    "version": "1.3.1",
-    "description": "AI-powered git commit message generator using Gemini API",
+    "version": "2.0.0",
+    "description": "AI-powered git commit message generator using OpenRouter API with multiple AI models (Grok, Claude, GPT-4, Gemini)",
     "main": "src/index.js",
     "bin": {
         "smartc": "./src/cli.js"
@@ -13,12 +13,17 @@
         "clean": "node scripts/clean.js"
     },
     "keywords": [
-        "git",
-        "commit",
-        "ai",
-        "gemini",
-        "conventional-commits",
-        "cli"
+      "git",
+      "commit",
+      "ai",
+      "openrouter",
+      "grok",
+      "claude",
+      "gpt-4",
+      "gemini",
+      "llama",
+      "conventional-commits",
+      "cli"
     ],
     "author": "",
     "license": "ISC",
@@ -26,9 +31,9 @@
         "node": ">=14.0.0"
     },
     "dependencies": {
-        "@google/genai": "^1.5.1",
-        "commander": "^14.0.0",
-        "inquirer": "^8.2.6",
-        "simple-git": "^3.28.0"
+      "axios": "^1.7.0",
+      "commander": "^14.0.0",
+      "inquirer": "^8.2.6",
+      "simple-git": "^3.28.0"
     }
 }
