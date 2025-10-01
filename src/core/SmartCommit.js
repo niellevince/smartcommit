@@ -109,6 +109,10 @@ class SmartCommit {
             const config = await this.configManager.loadConfig();
             const repoName = this.gitManager.getRepoName(targetPath);
 
+            // Log the AI model being used
+            const currentModel = this.aiManager.model || config.model || 'x-ai/grok-4-fast:free';
+            console.log(`🤖 AI Model: ${currentModel}`);
+
             console.log('🔍 Checking for changes...');
             const diffData = await this.gitManager.getGitDiff(git, radius);
             if (!diffData) {
@@ -200,6 +204,10 @@ class SmartCommit {
             if (radius !== 10) {
                 console.log(`📏 Context radius: ${radius} lines`);
             }
+
+            // Log the AI model being used
+            const currentModel = this.aiManager.model || config.model || 'x-ai/grok-4-fast:free';
+            console.log(`🤖 AI Model: ${currentModel}`);
             console.log();
 
             // Check for changes
@@ -407,8 +415,10 @@ class SmartCommit {
 
             const config = await this.configManager.loadConfig();
 
+            // Log the AI model being used
+            const currentModel = this.aiManager.model || config.model || 'x-ai/grok-4-fast:free';
             console.log('🔍 Testing OpenRouter API connection...');
-            console.log(`🤖 Model: ${config.model || 'x-ai/grok-2-flash:free'}`);
+            console.log(`🤖 Model: ${currentModel}`);
             console.log();
 
             const testResult = await this.aiManager.testApiConnection(config.OPENROUTER_API_KEY);

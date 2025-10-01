@@ -7,11 +7,14 @@ class CLIInterface {
     }
 
     async confirmCommit(commitData) {
-        const { summary, description, type, scope, breaking, issues, changes } = commitData;
+        const { summary, description, type, scope, breaking, issues, changes, generationTime } = commitData;
 
         console.log('📝 Generated Commit Message:\n');
         console.log(`Summary: ${summary}`);
         console.log(`Type: ${type}${scope ? ` | Scope: ${scope}` : ''}${breaking ? ' | ⚠️ BREAKING CHANGE' : ''}`);
+        if (generationTime) {
+            console.log(`⏱️  Generation Time: ${generationTime}ms`);
+        }
 
         if (changes && changes.length > 0) {
             console.log(`\nChanges:`);

@@ -20,6 +20,7 @@ class AIManager {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating commit message...`);
 
                 const request = this.buildStructuredRequest(diffData, history, additionalContext, selectiveContext);
+                const startTime = Date.now();
 
                 // OpenRouter API call
                 const response = await axios.post(
@@ -45,11 +46,12 @@ class AIManager {
                     }
                 );
 
+                const generationTime = Date.now() - startTime;
                 const text = response.data.choices[0].message.content;
                 const commitData = this.parseCommitMessage(text);
 
                 if (commitData && commitData.summary) {
-                    this.logger.success(`✅ Commit message generated successfully on attempt ${attempt}`);
+                    this.logger.success(`✅ Commit message generated successfully on attempt ${attempt} (${generationTime}ms)`);
 
                     // Remove internal parsing flag from the returned data
                     const { parseSuccess, ...cleanCommitData } = commitData;
@@ -57,6 +59,7 @@ class AIManager {
                     // Return both the commit data and complete generation data (like original)
                     return {
                         ...cleanCommitData,
+                        generationTime: generationTime,                   // Add generation time
                         requestData: {
                             rawResponse: text,                               // Full AI response
                             parsedMessage: cleanCommitData,                 // Parsed result
@@ -64,7 +67,8 @@ class AIManager {
                             fileCount: diffData.files.length,              // File count
                             changedFiles: diffData.files.map(f => f.path), // Changed files list
                             additionalContext: additionalContext,          // Additional context
-                            model: response.data.model                      // Actual model used
+                            model: response.data.model,                     // Actual model used
+                            generationTime: generationTime                 // Generation time in requestData too
                         }
                     };
                 }
@@ -91,6 +95,7 @@ class AIManager {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating grouped commits...`);
 
                 const request = this.buildGroupedRequest(diffData);
+                const startTime = Date.now();
 
                 // OpenRouter API call
                 const response = await axios.post(
@@ -116,11 +121,12 @@ class AIManager {
                     }
                 );
 
+                const generationTime = Date.now() - startTime;
                 const text = response.data.choices[0].message.content;
                 const commits = this.parseGroupedCommits(text);
 
                 if (commits && commits.length > 0) {
-                    this.logger.success(`✅ Grouped commits generated successfully on attempt ${attempt}`);
+                    this.logger.success(`✅ Grouped commits generated successfully on attempt ${attempt} (${generationTime}ms)`);
                     return commits;
                 }
 
