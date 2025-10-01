@@ -12,16 +12,21 @@ const COMMIT_TYPES = [
     'revert'    // Reverts a previous commit
 ];
 
-const GEMINI_MODELS = [
-    'gemini-2.5-flash',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro'
+const OPENROUTER_MODELS = [
+    'x-ai/grok-4-fast:free',          // Default - Free tier
+    'anthropic/claude-3.5-sonnet',    // Claude Sonnet 3.5
+    'openai/gpt-4o',                  // GPT-4 Optimized
+    'openai/gpt-4o-mini',             // GPT-4 Mini
+    'google/gemini-2.5-flash',        // Gemini via OpenRouter
+    'meta-llama/llama-3.3-70b',       // Llama 3.3
+    'qwen/qwen-2.5-72b-instruct',     // Qwen 2.5
+    'custom'                          // Allow custom model input
 ];
 
 const DEFAULT_CONFIG = {
-    model: 'gemini-2.5-flash',
+    model: 'x-ai/grok-4-fast:free',
     maxRetries: 3,
-    version: '1.0.0',
+    version: '2.0.0',
     maxHistoryEntries: 50,
     maxFileSize: 100 * 1024, // 100KB
     commitMessageMaxLength: 72
@@ -47,7 +52,7 @@ const STATUS_ICONS = {
 
 module.exports = {
     COMMIT_TYPES,
-    GEMINI_MODELS,
+    OPENROUTER_MODELS,
     DEFAULT_CONFIG,
     BINARY_EXTENSIONS,
     STATUS_ICONS

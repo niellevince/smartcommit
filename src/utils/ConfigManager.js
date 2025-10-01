@@ -24,8 +24,8 @@ class ConfigManager {
 
         try {
             const config = JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
-            if (!config.GEMINI_API_KEY) {
-                this.logger.warn('Gemini API key not found in config. Setting up...');
+            if (!config.OPENROUTER_API_KEY) {
+                this.logger.warn('OpenRouter API key not found in config. Setting up...');
                 return await this.setupConfig();
             }
             return config;
@@ -42,7 +42,7 @@ class ConfigManager {
             {
                 type: 'password',
                 name: 'apiKey',
-                message: 'Enter your Gemini API Key:',
+                message: 'Enter your OpenRouter API Key:',
                 validate: (input) => {
                     if (!input.trim()) {
                         return 'API Key is required!';
@@ -53,10 +53,10 @@ class ConfigManager {
         ]);
 
         const config = {
-            GEMINI_API_KEY: apiKey.trim(),
-            model: 'gemini-2.5-flash',
+            OPENROUTER_API_KEY: apiKey.trim(),
+            model: 'x-ai/grok-4-fast:free',
             maxRetries: 3,
-            version: '1.0.0',
+            version: '2.0.0',
             createdAt: new Date().toISOString()
         };
 

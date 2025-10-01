@@ -228,7 +228,7 @@ class CLIInterface {
             {
                 type: 'password',
                 name: 'apiKey',
-                message: 'Enter your Gemini API Key:',
+                message: 'Enter your OpenRouter API Key:',
                 validate: (input) => {
                     if (!input.trim()) {
                         return 'API Key is required!';
@@ -246,15 +246,37 @@ class CLIInterface {
             {
                 type: 'list',
                 name: 'model',
-                message: 'Select Gemini model:',
+                message: 'Select AI model for commit generation:',
                 choices: [
-                    { name: 'Gemini 2.5 Flash (Recommended)', value: 'gemini-2.5-flash' },
-                    { name: 'Gemini 1.5 Flash', value: 'gemini-1.5-flash' },
-                    { name: 'Gemini 1.5 Pro', value: 'gemini-1.5-pro' }
+                    { name: 'X.AI Grok 4 Fast (Free, Recommended)', value: 'x-ai/grok-4-fast:free' },
+                    { name: 'Anthropic Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
+                    { name: 'OpenAI GPT-4o', value: 'openai/gpt-4o' },
+                    { name: 'OpenAI GPT-4o Mini', value: 'openai/gpt-4o-mini' },
+                    { name: 'Google Gemini 2.5 Flash', value: 'google/gemini-2.5-flash' },
+                    { name: 'Meta Llama 3.3 70B', value: 'meta-llama/llama-3.3-70b' },
+                    { name: 'Qwen 2.5 72B', value: 'qwen/qwen-2.5-72b-instruct' },
+                    { name: 'Custom Model (Enter manually)', value: 'custom' }
                 ],
-                default: 'gemini-2.5-flash'
+                default: 'x-ai/grok-4-fast:free'
             }
         ]);
+
+        if (model === 'custom') {
+            const { customModel } = await inquirer.prompt([
+                {
+                    type: 'input',
+                    name: 'customModel',
+                    message: 'Enter custom OpenRouter model name (e.g., openai/gpt-4-turbo):',
+                    validate: (input) => {
+                        if (!input.trim()) {
+                            return 'Model name is required!';
+                        }
+                        return true;
+                    }
+                }
+            ]);
+            return customModel.trim();
+        }
 
         return model;
     }

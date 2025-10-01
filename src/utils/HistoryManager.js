@@ -80,8 +80,9 @@ class HistoryManager {
             request: requestData || null,
             generation: generation,
             metadata: {
-                model: 'gemini-2.5-flash',
-                version: '1.0.0'
+                model: generation.model || 'x-ai/grok-4-fast:free',
+                provider: 'openrouter',
+                version: '2.0.0'
             }
         };
 

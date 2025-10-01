@@ -1,4 +1,4 @@
-const { GoogleGenAI } = require('@google/genai');
+const axios = require('axios');
 const { Logger } = require('./Logger');
 const { GROUPED_COMMITS_PROMPT } = require('../prompts/groupedCommits');
 const { buildCommitMessageInstructions } = require('../prompts/commitMessage');
@@ -7,6 +7,11 @@ class AIManager {
     constructor() {
         this.logger = new Logger();
         this.maxRetries = 3;
+        this.model = 'x-ai/grok-4-fast:free'; // Default model
+    }
+
+    setModel(model) {
+        this.model = model;
     }
 
     async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null, selectiveContext = null) {
@@ -14,15 +19,33 @@ class AIManager {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating commit message...`);
 
-                const ai = new GoogleGenAI({ apiKey });
-
                 const request = this.buildStructuredRequest(diffData, history, additionalContext, selectiveContext);
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: request
-                });
-                const text = response.text;
 
+                // OpenRouter API call
+                const response = await axios.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    {
+                        model: this.model || 'x-ai/grok-4-fast:free',
+                        messages: [
+                            {
+                                role: 'user',
+                                content: request
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
+                            'X-Title': 'SmartCommit',
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                const text = response.data.choices[0].message.content;
                 const commitData = this.parseCommitMessage(text);
 
                 if (commitData && commitData.summary) {
@@ -40,7 +63,8 @@ class AIManager {
                             structuredRequest: JSON.parse(request),         // Full structured request
                             fileCount: diffData.files.length,              // File count
                             changedFiles: diffData.files.map(f => f.path), // Changed files list
-                            additionalContext: additionalContext           // Additional context
+                            additionalContext: additionalContext,          // Additional context
+                            model: response.data.model                      // Actual model used
                         }
                     };
                 }
@@ -66,15 +90,33 @@ class AIManager {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating grouped commits...`);
 
-                const ai = new GoogleGenAI({ apiKey });
-
                 const request = this.buildGroupedRequest(diffData);
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: request
-                });
-                const text = response.text;
 
+                // OpenRouter API call
+                const response = await axios.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    {
+                        model: this.model || 'x-ai/grok-4-fast:free',
+                        messages: [
+                            {
+                                role: 'user',
+                                content: request
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 3000
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
+                            'X-Title': 'SmartCommit',
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                const text = response.data.choices[0].message.content;
                 const commits = this.parseGroupedCommits(text);
 
                 if (commits && commits.length > 0) {
@@ -322,6 +364,48 @@ class AIManager {
     }
 
 
+
+    async testApiConnection(apiKey) {
+        const startTime = Date.now();
+
+        try {
+            // OpenRouter API call with simple hello message
+            const response = await axios.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                {
+                    model: this.model || 'x-ai/grok-4-fast:free',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: 'Hello! Please respond with just "Hello from [your model name]!" and nothing else.'
+                        }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 50
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
+                        'X-Title': 'SmartCommit',
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            const responseTime = Date.now() - startTime;
+            const aiResponse = response.data.choices[0].message.content.trim();
+
+            return {
+                response: aiResponse,
+                model: response.data.model,
+                responseTime: responseTime
+            };
+
+        } catch (error) {
+            throw new Error(`API connection failed: ${error.response?.data?.error?.message || error.message}`);
+        }
+    }
 
     getStatusDescription(index, workingDir) {
         const statusMap = {

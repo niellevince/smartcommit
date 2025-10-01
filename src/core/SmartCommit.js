@@ -8,7 +8,7 @@ const { CLIInterface } = require('../utils/CLIInterface');
 const { Logger } = require('../utils/Logger');
 
 class SmartCommit {
-    constructor() {
+    constructor(options = {}) {
         this.dataDir = path.join(__dirname, '../../data');
         this.configManager = new ConfigManager(this.dataDir);
         this.historyManager = new HistoryManager(this.dataDir);
@@ -16,6 +16,11 @@ class SmartCommit {
         this.aiManager = new AIManager();
         this.cli = new CLIInterface();
         this.logger = new Logger();
+
+        // Set model override if provided
+        if (options.model) {
+            this.aiManager.setModel(options.model);
+        }
     }
 
     async run() {
@@ -27,6 +32,8 @@ class SmartCommit {
             .version(this.getVersion(), '-v, --version', 'Show version information')
             .helpOption('-h, --help', 'Show this help message')
             .option('--clean', 'Clean all data and reset configuration')
+            .option('--test', 'Test API connection with a simple hello message')
+            .option('--model <model>', 'Override the configured AI model for this run')
             .option('--additional <context>', 'Provide additional context to help AI generate more accurate commit messages')
             .option('--radius <number>', 'Set context radius (default: 10 lines around changes)', (value) => {
                 const parsedValue = parseInt(value);
@@ -54,6 +61,12 @@ class SmartCommit {
         // Handle clean command
         if (options.clean) {
             await this.cleanData();
+            return;
+        }
+
+        // Handle test command
+        if (options.test) {
+            await this.testApiConnection();
             return;
         }
 
@@ -105,7 +118,7 @@ class SmartCommit {
 
             console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
 
-            const groupedCommits = await this.aiManager.generateGroupedCommits(diffData, config.GEMINI_API_KEY, repoName);
+            const groupedCommits = await this.aiManager.generateGroupedCommits(diffData, config.OPENROUTER_API_KEY, repoName);
 
             if (!groupedCommits || groupedCommits.length === 0) {
                 console.log('🤖 AI could not group the changes. Please try again.');
@@ -261,7 +274,7 @@ class SmartCommit {
                     const result = await this.aiManager.generateCommitMessage(
                         diffData,
                         history,
-                        config.GEMINI_API_KEY,
+                        config.OPENROUTER_API_KEY,
                         repoName,
                         additionalContext,
                         selectiveContext
@@ -388,30 +401,64 @@ class SmartCommit {
         }
     }
 
+    async testApiConnection() {
+        try {
+            console.log('🧪 SmartCommit API Test\n');
+
+            const config = await this.configManager.loadConfig();
+
+            console.log('🔍 Testing OpenRouter API connection...');
+            console.log(`🤖 Model: ${config.model || 'x-ai/grok-2-flash:free'}`);
+            console.log();
+
+            const testResult = await this.aiManager.testApiConnection(config.OPENROUTER_API_KEY);
+
+            console.log('✅ API test successful!');
+            console.log(`🤖 AI Response: "${testResult.response}"`);
+            console.log(`📊 Model Used: ${testResult.model}`);
+            console.log(`⏱️  Response Time: ${testResult.responseTime}ms`);
+            console.log();
+
+        } catch (error) {
+            console.error('❌ API test failed!');
+            console.error(`Error: ${error.message}`);
+            console.log();
+            console.log('💡 Troubleshooting:');
+            console.log('   1. Check your OpenRouter API key');
+            console.log('   2. Visit: https://openrouter.ai/keys');
+            console.log('   3. Try: smartc --clean (to reset config)');
+            process.exit(1);
+        }
+    }
+
     getHelpText() {
         return `
 EXAMPLES:
   smartc                                  # Commit changes in current directory
   smartc .                                # Commit changes in current directory
   smartc /path/to/repo                    # Commit changes in specific repository
+  smartc --test                           # Test API connection with hello message
+  smartc --model anthropic/claude-3.5-sonnet  # Use Claude for this commit
+  smartc --model openai/gpt-4o            # Use GPT-4o for this commit
   smartc --additional "Fixed bug #123"    # Include extra context for AI
   smartc . --additional "Refactoring"     # Combine path and context
   smartc --only "authentication fixes"    # Commit only auth-related changes
-  smartc --only "UI styling updates"      # Commit only UI/styling changes
-  smartc --only "database schema"         # Commit only database-related changes
   smartc --interactive                    # Interactive staging mode
   smartc --patch                          # Interactive staging mode (alias)
   smartc --files                          # File selection mode
   smartc --auto                           # Auto-accept generated commit
-  smartc -a                               # Auto-accept generated commit (short form)
-  smartc --auto --additional "hotfix"     # Auto-accept with additional context
-  smartc --interactive --radius 5         # Interactive mode with smaller context
+  smartc -a                               # Auto-accept (short form)
   smartc --radius 5                       # Use smaller context radius (5 lines)
   smartc --radius 20                      # Use larger context radius (20 lines)
   smartc --clean                          # Reset all configuration and history
+  smartc --grouped                        # Group changes into related commits
 
 FEATURES:
-  ✨ AI-generated commit messages using Gemini API
+  ✨ AI-generated commit messages using OpenRouter API
+  🤖 Multiple AI models supported (Grok, Claude, GPT-4, Gemini, etc.)
+  🆓 Free tier available with X.AI Grok models
+  🧪 API connection testing with --test flag
+  🔄 Model override with --model flag for per-run customization
   📝 Conventional commit format (feat, fix, docs, etc.)
   🔄 Interactive confirmation with regeneration option
   🤖 Auto-accept mode for CI/CD and automated workflows
@@ -421,10 +468,19 @@ FEATURES:
   🔍 Selective commits - commit only changes related to specific context
   🎨 Interactive staging - select specific hunks/lines before AI generation
   📁 File selection - select specific files to include in commit
+  🎯 Smart context radius - sends only relevant code to AI
 
 SETUP:
-  On first run, you'll be prompted for your Gemini API key.
-  Get yours at: https://makersuite.google.com/app/apikey
+  On first run, you'll be prompted for your OpenRouter API key.
+  Get yours at: https://openrouter.ai/keys
+
+  You can choose from multiple AI models including:
+  - X.AI Grok (Free tier available)
+  - Anthropic Claude
+  - OpenAI GPT-4
+  - Google Gemini
+  - Meta Llama
+  - Custom models
 
 For more information, visit: https://github.com/niellevince/smartcommit
         `;
