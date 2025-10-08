@@ -251,7 +251,7 @@ class CLIInterface {
                 name: 'model',
                 message: 'Select AI model for commit generation:',
                 choices: [
-                    { name: 'X.AI Grok 4 Fast (Free, Recommended)', value: 'x-ai/grok-4-fast:free' },
+                    { name: 'Google Gemini 2.5 Flash Lite (Recommended)', value: 'google/gemini-2.5-flash-lite' },
                     { name: 'Anthropic Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
                     { name: 'OpenAI GPT-4o', value: 'openai/gpt-4o' },
                     { name: 'OpenAI GPT-4o Mini', value: 'openai/gpt-4o-mini' },
@@ -260,7 +260,7 @@ class CLIInterface {
                     { name: 'Qwen 2.5 72B', value: 'qwen/qwen-2.5-72b-instruct' },
                     { name: 'Custom Model (Enter manually)', value: 'custom' }
                 ],
-                default: 'x-ai/grok-4-fast:free'
+                default: 'google/gemini-2.5-flash-lite'
             }
         ]);
 

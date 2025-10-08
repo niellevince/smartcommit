@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-10-08
+
+### 🔄 Changed
+- **Default AI Model**: Changed default model from `x-ai/grok-4-fast:free` to `google/gemini-2.5-flash-lite` for better reliability
+- **Model Removal**: Removed unavailable `x-ai/grok-4-fast:free` model from supported models list
+- **Fallback Updates**: Updated all fallback model references throughout the codebase to use Gemini 2.5 Flash Lite
+
+### 🧹 Maintenance
+- **Code Cleanup**: Removed all references to unavailable X.AI Grok model from source code and documentation
+- **Documentation Updates**: Updated README.md and other docs to reflect current supported models
+- **Version Consistency**: Updated version numbers across all configuration files
+
+### 📚 Documentation
+- **Model List Updates**: Removed unavailable models and updated default model references
+- **Setup Instructions**: Updated to recommend Gemini Lite as the default choice
+
 ## [2.0.0] - 2025-10-01
 
 ### 🚨 BREAKING CHANGES

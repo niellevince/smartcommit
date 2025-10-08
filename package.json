@@ -1,7 +1,7 @@
 {
     "name": "smartcommit",
-    "version": "2.0.0",
-    "description": "AI-powered git commit message generator using OpenRouter API with multiple AI models (Grok, Claude, GPT-4, Gemini)",
+    "version": "2.1.0",
+    "description": "AI-powered git commit message generator using OpenRouter API with multiple AI models (Claude, GPT-4, Gemini, Llama)",
     "main": "src/index.js",
     "bin": {
         "smartc": "./src/cli.js"
@@ -17,11 +17,11 @@
       "commit",
       "ai",
       "openrouter",
-      "grok",
       "claude",
       "gpt-4",
       "gemini",
       "llama",
+      "qwen",
       "conventional-commits",
       "cli"
     ],

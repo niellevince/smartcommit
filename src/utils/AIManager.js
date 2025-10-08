@@ -7,7 +7,7 @@ class AIManager {
     constructor() {
         this.logger = new Logger();
         this.maxRetries = 3;
-        this.model = 'x-ai/grok-4-fast:free'; // Default model
+        this.model = 'google/gemini-2.5-flash-lite'; // Default model
     }
 
     setModel(model) {
@@ -26,7 +26,7 @@ class AIManager {
                 const response = await axios.post(
                     'https://openrouter.ai/api/v1/chat/completions',
                     {
-                        model: this.model || 'x-ai/grok-4-fast:free',
+                        model: this.model || 'google/gemini-2.5-flash-lite',
                         messages: [
                             {
                                 role: 'user',
@@ -101,7 +101,7 @@ class AIManager {
                 const response = await axios.post(
                     'https://openrouter.ai/api/v1/chat/completions',
                     {
-                        model: this.model || 'x-ai/grok-4-fast:free',
+                        model: this.model || 'google/gemini-2.5-flash-lite',
                         messages: [
                             {
                                 role: 'user',
@@ -379,7 +379,7 @@ class AIManager {
             const response = await axios.post(
                 'https://openrouter.ai/api/v1/chat/completions',
                 {
-                    model: this.model || 'x-ai/grok-4-fast:free',
+                    model: this.model || 'google/gemini-2.5-flash-lite',
                     messages: [
                         {
                             role: 'user',

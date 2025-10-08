@@ -13,7 +13,7 @@ const COMMIT_TYPES = [
 ];
 
 const OPENROUTER_MODELS = [
-    'x-ai/grok-4-fast:free',          // Default - Free tier
+    'google/gemini-2.5-flash-lite',   // Default - Fast and cost-effective
     'anthropic/claude-3.5-sonnet',    // Claude Sonnet 3.5
     'openai/gpt-4o',                  // GPT-4 Optimized
     'openai/gpt-4o-mini',             // GPT-4 Mini
@@ -24,9 +24,9 @@ const OPENROUTER_MODELS = [
 ];
 
 const DEFAULT_CONFIG = {
-    model: 'x-ai/grok-4-fast:free',
+    model: 'google/gemini-2.5-flash-lite',
     maxRetries: 3,
-    version: '2.0.0',
+    version: '2.1.0',
     maxHistoryEntries: 50,
     maxFileSize: 100 * 1024, // 100KB
     commitMessageMaxLength: 72

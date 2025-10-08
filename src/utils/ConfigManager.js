@@ -54,7 +54,7 @@ class ConfigManager {
 
         const config = {
             OPENROUTER_API_KEY: apiKey.trim(),
-            model: 'x-ai/grok-4-fast:free',
+            model: 'google/gemini-2.5-flash-lite',
             maxRetries: 3,
             version: '2.0.0',
             createdAt: new Date().toISOString()

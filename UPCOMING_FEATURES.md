@@ -43,8 +43,8 @@ smartc --model anthropic/claude-3.5-sonnet
 smartc --model openai/gpt-4o
 # Use GPT-4o for this specific commit
 
-smartc --model x-ai/grok-4-fast:free
-# Use free Grok model
+smartc --model google/gemini-2.5-flash-lite
+# Use Gemini Lite (default model)
 ```
 
 **Status**: ✅ **COMPLETED** - Available in current version

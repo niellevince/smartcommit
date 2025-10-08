@@ -110,7 +110,7 @@ class SmartCommit {
             const repoName = this.gitManager.getRepoName(targetPath);
 
             // Log the AI model being used
-            const currentModel = this.aiManager.model || config.model || 'x-ai/grok-4-fast:free';
+            const currentModel = this.aiManager.model || config.model || 'google/gemini-2.5-flash-lite';
             console.log(`🤖 AI Model: ${currentModel}`);
 
             console.log('🔍 Checking for changes...');
@@ -206,7 +206,7 @@ class SmartCommit {
             }
 
             // Log the AI model being used
-            const currentModel = this.aiManager.model || config.model || 'x-ai/grok-4-fast:free';
+            const currentModel = this.aiManager.model || config.model || 'google/gemini-2.5-flash-lite';
             console.log(`🤖 AI Model: ${currentModel}`);
             console.log();
 
@@ -416,7 +416,7 @@ class SmartCommit {
             const config = await this.configManager.loadConfig();
 
             // Log the AI model being used
-            const currentModel = this.aiManager.model || config.model || 'x-ai/grok-4-fast:free';
+            const currentModel = this.aiManager.model || config.model || 'google/gemini-2.5-flash-lite';
             console.log('🔍 Testing OpenRouter API connection...');
             console.log(`🤖 Model: ${currentModel}`);
             console.log();

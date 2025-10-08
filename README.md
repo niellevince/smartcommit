@@ -1,11 +1,10 @@
 # SmartCommit 🚀
 
-AI-powered git commit message generator using OpenRouter API. Generate professional, contextual commit messages automatically using multiple AI models including Grok, Claude, GPT-4, Gemini, and more.
+AI-powered git commit message generator using OpenRouter API. Generate professional, contextual commit messages automatically using multiple AI models including Claude, GPT-4, Gemini, and more.
 
 ## Features ✨
 
--   **Multiple AI Models**: Choose from Grok (free), Claude, GPT-4, Gemini, Llama, and more via OpenRouter
--   **Free Tier Available**: Use X.AI Grok models completely free
+-   **Multiple AI Models**: Choose from Claude, GPT-4, Gemini, Llama, and more via OpenRouter
 -   **AI-Generated Commits**: Analyze your changes and create meaningful commit messages
 -   **Smart Context Radius**: Only sends relevant code lines to AI (90% faster, 90% cost reduction)
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
@@ -54,14 +53,14 @@ On first run, SmartCommit will prompt you for your OpenRouter API key:
 1. Get your API key from [OpenRouter](https://openrouter.ai/keys)
 2. Run `smartc` in any git repository
 3. Enter your API key when prompted
-4. Select your preferred AI model (Grok free tier recommended)
+4. Select your preferred AI model (Gemini Lite recommended)
 5. Your configuration will be securely saved in `data/config.json`
 
 ### Supported AI Models 🤖
 
 SmartCommit supports multiple AI models through OpenRouter:
 
-- **X.AI Grok 4 Fast (Free)** - Default model, completely free tier available
+- **Google Gemini 2.5 Flash Lite** - Default model, fast and cost-effective
 - **Anthropic Claude 3.5 Sonnet** - Excellent for code analysis and commit messages
 - **OpenAI GPT-4o** - Powerful general-purpose model
 - **OpenAI GPT-4o Mini** - Fast and cost-effective
@@ -88,7 +87,7 @@ smartc --test         # Test API connection with hello message
 # Use different AI models for specific commits
 smartc --model anthropic/claude-3.5-sonnet  # Use Claude for complex analysis
 smartc --model openai/gpt-4o               # Use GPT-4o for this commit
-smartc --model x-ai/grok-4-fast:free       # Use free Grok model
+smartc --model google/gemini-2.5-flash-lite # Use Gemini Lite (default)
 
 # Control context radius for AI analysis
 smartc --radius 5    # Minimal context (5 lines around changes)
