@@ -10,7 +10,7 @@ AI-powered git commit message generator using OpenRouter API. Generate professio
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
 -   **Commit History Context**: Learns from your previous commits to generate better messages
 -   **Interactive CLI**: Choose to commit, regenerate, or cancel with a beautiful terminal interface
--   **Grouped Commits**: Use AI to group all your changes into a series of related commits, allowing you to review and accept each one individually. Now supports `--additional` context for better AI analysis.
+-   **Grouped Commits**: Use AI to group all your changes into a series of related commits, allowing you to review and accept each one individually. Now supports `--additional` context for better AI analysis and orders commits by dependencies for logical application sequence.
 -   **Interactive Staging**: Select specific hunks/lines before AI generation with `--interactive` or `--patch`
 -   **File Selection**: Choose specific files to include in your commit with `--files`
 -   **Auto-Accept Mode**: Skip confirmation with `--auto` or `-a` for CI/CD workflows
