@@ -1,6 +1,6 @@
 {
     "name": "smartcommit",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "description": "AI-powered git commit message generator using OpenRouter API with multiple AI models (Claude, GPT-4, Gemini, Llama)",
     "main": "src/index.js",
     "bin": {
