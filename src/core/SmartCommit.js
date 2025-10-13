@@ -6,6 +6,7 @@ const { AIManager } = require('../utils/AIManager');
 const { HistoryManager } = require('../utils/HistoryManager');
 const { CLIInterface } = require('../utils/CLIInterface');
 const { Logger } = require('../utils/Logger');
+const { CommandContext } = require('../utils/CommandContext');
 
 class SmartCommit {
     constructor(options = {}) {
@@ -56,65 +57,64 @@ class SmartCommit {
         program.parse(process.argv);
 
         const options = program.opts();
-        const targetPath = program.args[0] || '.';
+        const args = program.args;
+
+        // Create centralized command context
+        const context = new CommandContext(options, args);
+
+        // Set model override if provided
+        if (context.getFlag('model')) {
+            this.aiManager.setModel(context.getFlag('model'));
+        }
 
         // Handle clean command
-        if (options.clean) {
+        if (context.hasFlag('clean')) {
             await this.cleanData();
             return;
         }
 
         // Handle test command
-        if (options.test) {
-            await this.testApiConnection();
+        if (context.hasFlag('test')) {
+            await this.testApiConnection(context);
             return;
         }
 
-        // Validate that interactive and files modes are not used together
-        if (options.interactive && options.files) {
-            console.error('❌ Error: --interactive and --files flags cannot be used together');
+        // Validate flag combinations
+        try {
+            context.validate();
+        } catch (error) {
+            console.error(`❌ Error: ${error.message}`);
             process.exit(1);
         }
 
-        if (options.grouped) {
-            await this.processGroupedCommit(targetPath, options.radius);
+        // Initialize context with runtime state
+        await context.initialize(this.configManager, this.gitManager, this.historyManager);
+
+        if (context.hasFlag('grouped')) {
+            await this.processGroupedCommit(context);
             return;
         }
 
-        // Determine interactive mode (either --interactive or --patch)
-        const interactiveMode = options.interactive || options.patch || false;
-        
-        await this.processCommit(
-            targetPath, 
-            options.additional, 
-            options.radius, 
-            options.only, 
-            interactiveMode, 
-            options.auto, 
-            options.files
-        );
+        await this.processCommit(context);
     }
 
-    async processGroupedCommit(targetPath, radius = 10) {
+    async processGroupedCommit(context) {
         try {
             console.log('🔍 SmartCommit - Grouped Commits\n');
 
-            const git = this.gitManager.initGit(targetPath);
-            const isRepo = await git.checkIsRepo();
+            const isRepo = await context.git.checkIsRepo();
             if (!isRepo) {
                 console.error('❌ Error: Not a git repository!');
                 process.exit(1);
             }
 
-            const config = await this.configManager.loadConfig();
-            const repoName = this.gitManager.getRepoName(targetPath);
-
-            // Log the AI model being used
-            const currentModel = this.aiManager.model || config.model || 'google/gemini-2.5-flash-lite';
-            console.log(`🤖 AI Model: ${currentModel}`);
+            // Display context information
+            const displayInfo = context.getDisplayInfo();
+            displayInfo.forEach(info => console.log(info));
+            console.log();
 
             console.log('🔍 Checking for changes...');
-            const diffData = await this.gitManager.getGitDiff(git, radius);
+            const diffData = await this.gitManager.getGitDiff(context.git, context.getRadius());
             if (!diffData) {
                 console.log('✨ No changes detected. Repository is clean!');
                 process.exit(0);
@@ -122,7 +122,12 @@ class SmartCommit {
 
             console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
 
-            const groupedCommits = await this.aiManager.generateGroupedCommits(diffData, config.OPENROUTER_API_KEY, repoName);
+            const groupedCommits = await this.aiManager.generateGroupedCommits(
+                diffData,
+                context.config.OPENROUTER_API_KEY,
+                context.repoName,
+                context.getAdditionalContext()
+            );
 
             if (!groupedCommits || groupedCommits.length === 0) {
                 console.log('🤖 AI could not group the changes. Please try again.');
@@ -137,7 +142,7 @@ class SmartCommit {
                 const action = await this.cli.confirmGroupedCommit(commit);
 
                 if (action === 'accept') {
-                    await this.executeCommit(git, commit, repoName, [], null);
+                    await this.executeCommit(context.git, commit, context.repoName, [], null);
                 } else if (action === 'skip') {
                     skippedCommits.push(commit);
                 } else if (action === 'cancel') {
@@ -151,7 +156,7 @@ class SmartCommit {
                 for (const commit of skippedCommits) {
                     const action = await this.cli.confirmGroupedCommit(commit);
                     if (action === 'accept') {
-                        await this.executeCommit(git, commit, repoName, [], null);
+                        await this.executeCommit(context.git, commit, context.repoName, [], null);
                     } else {
                         console.log('Skipping commit.');
                     }
@@ -164,55 +169,24 @@ class SmartCommit {
         }
     }
 
-    async processCommit(targetPath, additionalContext = null, radius = 10, selectiveContext = null, interactiveMode = false, autoMode = false, filesMode = false) {
+    async processCommit(context) {
         try {
             console.log('🔍 SmartCommit - AI-Powered Git Commits\n');
 
-            // Initialize git and validate repository (like original)
-            const git = this.gitManager.initGit(targetPath);
-            const isRepo = await git.checkIsRepo();
+            const isRepo = await context.git.checkIsRepo();
             if (!isRepo) {
                 console.error('❌ Error: Not a git repository!');
                 process.exit(1);
             }
 
-            // Load configuration
-            const config = await this.configManager.loadConfig();
-
-            // Get repository name and load history
-            const repoName = this.gitManager.getRepoName(targetPath);
-            const history = this.historyManager.loadHistory(repoName);
-
-            // Display repository info (like original)
-            console.log(`📂 Repository: ${repoName}`);
-            console.log(`📍 Path: ${path.resolve(targetPath)}`);
-            if (additionalContext) {
-                console.log(`📋 Additional context: "${additionalContext}"`);
-            }
-            if (selectiveContext) {
-                console.log(`🔍 Selective commit: "${selectiveContext}"`);
-            }
-            if (interactiveMode) {
-                console.log(`🎨 Interactive staging mode: enabled`);
-            }
-            if (filesMode) {
-                console.log(`📁 File selection mode: enabled`);
-            }
-            if (autoMode) {
-                console.log(`🤖 Auto mode: enabled (will auto-accept generated commit)`);
-            }
-            if (radius !== 10) {
-                console.log(`📏 Context radius: ${radius} lines`);
-            }
-
-            // Log the AI model being used
-            const currentModel = this.aiManager.model || config.model || 'google/gemini-2.5-flash-lite';
-            console.log(`🤖 AI Model: ${currentModel}`);
+            // Display context information
+            const displayInfo = context.getDisplayInfo();
+            displayInfo.forEach(info => console.log(info));
             console.log();
 
             // Check for changes
             console.log('🔍 Checking for changes...');
-            const diffData = await this.gitManager.getGitDiff(git, radius);
+            const diffData = await this.gitManager.getGitDiff(context.git, context.getRadius());
             if (!diffData) {
                 console.log('✨ No changes detected. Repository is clean!');
                 process.exit(0);
@@ -223,7 +197,7 @@ class SmartCommit {
             // Handle interactive staging if enabled
             let stagedFiles = null;
             let selectedFiles = null;
-            if (interactiveMode) {
+            if (context.isInteractiveMode()) {
                 // Confirm interactive mode
                 const confirmed = await this.cli.confirmInteractiveMode();
                 if (!confirmed) {
@@ -235,10 +209,10 @@ class SmartCommit {
                 selectedFiles = await this.cli.interactiveStaging(diffData.files);
                 
                 // Perform interactive staging
-                stagedFiles = await this.gitManager.stageInteractively(git, selectedFiles);
+                stagedFiles = await this.gitManager.stageInteractively(context.git, selectedFiles);
                 
                 // Get updated diff data after interactive staging
-                const updatedDiffData = await this.gitManager.getGitDiff(git, radius);
+                const updatedDiffData = await this.gitManager.getGitDiff(context.git, context.getRadius());
                 if (!updatedDiffData || updatedDiffData.files.length === 0) {
                     console.log('✨ No changes were staged. Operation cancelled.');
                     process.exit(0);
@@ -247,7 +221,7 @@ class SmartCommit {
                 // Use updated diffData to reflect only staged changes
                 Object.assign(diffData, updatedDiffData);
                 console.log(`\n📦 Interactive staging completed. ${stagedFiles.length} file(s) staged.\n`);
-            } else if (filesMode) {
+            } else if (context.hasFlag('files')) {
                 // Handle file selection mode
                 selectedFiles = await this.cli.selectFiles(diffData.files);
                 
@@ -257,10 +231,10 @@ class SmartCommit {
                 }
                 
                 // Stage selected files
-                stagedFiles = await this.gitManager.stageSelectedFiles(git, selectedFiles);
+                stagedFiles = await this.gitManager.stageSelectedFiles(context.git, selectedFiles);
                 
                 // Get updated diff data after staging selected files, filtered to only selected files
-                const updatedDiffData = await this.gitManager.getGitDiff(git, radius, selectedFiles);
+                const updatedDiffData = await this.gitManager.getGitDiff(context.git, context.getRadius(), selectedFiles);
                 if (!updatedDiffData || updatedDiffData.files.length === 0) {
                     console.log('✨ No changes were staged. Operation cancelled.');
                     process.exit(0);
@@ -281,33 +255,33 @@ class SmartCommit {
                 try {
                     const result = await this.aiManager.generateCommitMessage(
                         diffData,
-                        history,
-                        config.OPENROUTER_API_KEY,
-                        repoName,
-                        additionalContext,
-                        selectiveContext
+                        context.history,
+                        context.config.OPENROUTER_API_KEY,
+                        context.repoName,
+                        context.getAdditionalContext(),
+                        context.getSelectiveContext()
                     );
 
                     // Extract commit data and request data
                     const { requestData, ...commitData } = result;
 
                     // Save generation for tracking
-                    const generationFile = this.historyManager.saveGeneration(repoName, commitData, false, requestData);
+                    const generationFile = this.historyManager.saveGeneration(context.repoName, commitData, false, requestData);
 
                     // Add generation filename to commit data for tracking
                     commitData.generationFilename = generationFile;
                     
                     // Add staging info if applicable
-                    if (interactiveMode && stagedFiles) {
+                    if (context.isInteractiveMode() && stagedFiles) {
                         commitData.interactiveStaged = true;
                         commitData.stagedFiles = stagedFiles;
-                    } else if (filesMode && selectedFiles) {
+                    } else if (context.hasFlag('files') && selectedFiles) {
                         commitData.filesSelected = true;
                         commitData.selectedFiles = selectedFiles;
                     }
 
                     let confirmed;
-                    if (autoMode) {
+                    if (context.hasFlag('auto')) {
                         // Auto-accept the generated commit
                         console.log('🤖 Auto mode: Automatically accepting generated commit...');
                         confirmed = { action: 'accept' };
@@ -316,7 +290,7 @@ class SmartCommit {
                     }
 
                     if (confirmed.action === 'accept') {
-                        await this.executeCommit(git, commitData, repoName, history, generationFile);
+                        await this.executeCommit(context.git, commitData, context.repoName, context.history, generationFile);
                         break;
                     } else if (confirmed.action === 'regenerate') {
                         // Continue loop for regeneration
@@ -409,19 +383,20 @@ class SmartCommit {
         }
     }
 
-    async testApiConnection() {
+    async testApiConnection(context) {
         try {
             console.log('🧪 SmartCommit API Test\n');
 
-            const config = await this.configManager.loadConfig();
+            // Initialize context if not already done
+            if (!context.config) {
+                await context.initialize(this.configManager, this.gitManager, this.historyManager);
+            }
 
-            // Log the AI model being used
-            const currentModel = this.aiManager.model || config.model || 'google/gemini-2.5-flash-lite';
             console.log('🔍 Testing OpenRouter API connection...');
-            console.log(`🤖 Model: ${currentModel}`);
+            console.log(`🤖 Model: ${context.getModel()}`);
             console.log();
 
-            const testResult = await this.aiManager.testApiConnection(config.OPENROUTER_API_KEY);
+            const testResult = await this.aiManager.testApiConnection(context.config.OPENROUTER_API_KEY);
 
             console.log('✅ API test successful!');
             console.log(`🤖 AI Response: "${testResult.response}"`);
