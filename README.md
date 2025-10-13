@@ -10,7 +10,7 @@ AI-powered git commit message generator using OpenRouter API. Generate professio
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
 -   **Commit History Context**: Learns from your previous commits to generate better messages
 -   **Interactive CLI**: Choose to commit, regenerate, or cancel with a beautiful terminal interface
--   **Grouped Commits**: Use AI to group all your changes into a series of related commits, allowing you to review and accept each one individually.
+-   **Grouped Commits**: Use AI to group all your changes into a series of related commits, allowing you to review and accept each one individually. Now supports `--additional` context for better AI analysis.
 -   **Interactive Staging**: Select specific hunks/lines before AI generation with `--interactive` or `--patch`
 -   **File Selection**: Choose specific files to include in your commit with `--files`
 -   **Auto-Accept Mode**: Skip confirmation with `--auto` or `-a` for CI/CD workflows
@@ -120,6 +120,7 @@ smartc --clean
 
 # Grouped commit mode - let AI group changes into related commits
 smartc --grouped
+smartc --grouped --additional "Refactoring authentication module"  # Now works!
 ```
 
 ### Workflow
@@ -326,6 +327,7 @@ smartcommit/
 │   ├── core/                    # Core business logic
 │   │   └── SmartCommit.js       # Main orchestrator class
 │   ├── utils/                   # Utility modules
+│   │   ├── CommandContext.js    # Centralized CLI configuration (NEW)
 │   │   ├── ConfigManager.js     # Configuration management
 │   │   ├── GitManager.js        # Git operations
 │   │   ├── AIManager.js         # AI/Gemini integration
@@ -339,6 +341,7 @@ smartcommit/
 │   ├── config.json             # API key storage (gitignored)
 │   ├── generations/            # AI generation history
 │   └── *.json                  # Repository-specific history files
+├── COMMAND_CONTEXT_IMPLEMENTATION.md  # Implementation documentation (NEW)
 └── README.md                   # This file
 ```
 

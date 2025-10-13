@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-10-13
+
+### ✨ Added
+- **Centralized Command Context**: Implemented `CommandContext` class as single source of truth for all CLI parameters and runtime state
+- **Enhanced Flag Compatibility**: Fixed `--additional` flag to work with `--grouped` mode (previously ignored due to early exits)
+- **Improved Architecture**: Refactored CLI processing to use centralized configuration object pattern
+
+### 🔄 Changed
+- **Code Architecture**: Updated `SmartCommit.js`, `AIManager.js`, and created new `CommandContext.js` for better maintainability
+- **Method Signatures**: Simplified method parameters by passing context objects instead of individual flags
+- **Grouped Commits**: Enhanced grouped commit mode to support additional context from `--additional` flag
+
+### 🐛 Fixed
+- **Flag Combination Bug**: `--additional` flag now works correctly with `--grouped` mode
+- **Parameter Passing**: Eliminated bugs where flags were forgotten in early exits or method calls
+
+### 🧹 Maintenance
+- **Code Refactoring**: Improved code organization and reduced coupling between components
+- **Documentation**: Added comprehensive implementation documentation in `COMMAND_CONTEXT_IMPLEMENTATION.md`
+
 ## [2.1.0] - 2025-10-08
 
 ### 🔄 Changed
