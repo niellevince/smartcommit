@@ -89,12 +89,12 @@ class AIManager {
         }
     }
 
-    async generateGroupedCommits(diffData, apiKey, repoName) {
+    async generateGroupedCommits(diffData, apiKey, repoName, additionalContext = null) {
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating grouped commits...`);
 
-                const request = this.buildGroupedRequest(diffData);
+                const request = this.buildGroupedRequest(diffData, additionalContext);
                 const startTime = Date.now();
 
                 // OpenRouter API call
@@ -145,7 +145,7 @@ class AIManager {
         }
     }
 
-    buildGroupedRequest(diffData) {
+    buildGroupedRequest(diffData, additionalContext = null) {
         const { files, fileContents } = diffData;
 
         const filesData = {};
@@ -168,11 +168,21 @@ class AIManager {
             };
         });
 
+        // Update instructions with additional context if provided
+        const instructions = {
+            ...GROUPED_COMMITS_PROMPT.instructions,
+            guidelines: [
+                ...GROUPED_COMMITS_PROMPT.instructions.guidelines,
+                additionalContext ? "Pay special attention to the additional context provided by the user" : null
+            ].filter(Boolean)
+        };
+
         const structuredRequest = {
-            instructions: GROUPED_COMMITS_PROMPT.instructions,
+            instructions: instructions,
             context: {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
+                additionalContext: additionalContext
             },
             diff: {
                 staged: diffData.stagedDiff || '',
