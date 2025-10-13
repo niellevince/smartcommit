@@ -36,4 +36,4 @@ process.on('unhandledRejection', (reason, promise) => {
 
 if (require.main === module) {
     main();
-} 
+}
