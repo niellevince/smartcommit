@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-10-13
+
+### ✨ Added
+- **Dependency-Based Commit Ordering**: Enhanced grouped commits to order commits by dependencies, ensuring logical application sequence
+- **Smart Commit Sequencing**: AI now analyzes git diff context to prioritize foundational changes before dependent modifications
+- **Conflict Prevention**: Commits are ordered to minimize conflicts during staging and application
+
+### 🔄 Changed
+- **Grouped Commits Prompt**: Updated AI instructions to consider import relationships, function calls, and structural dependencies
+- **Commit Logic**: Improved commit ordering to place commits with least dependencies first
+
+### 🐛 Fixed
+- **Commit Application Order**: Resolved potential conflicts from applying commits in wrong dependency order
+
 ## [2.2.0] - 2025-10-13
 
 ### ✨ Added
