@@ -139,7 +139,13 @@ class SmartCommit {
             const skippedCommits = [];
 
             for (const commit of groupedCommits) {
-                const action = await this.cli.confirmGroupedCommit(commit);
+                let action;
+                if (context.hasFlag('auto')) {
+                    console.log('🤖 Auto mode: Automatically accepting grouped commit...');
+                    action = 'accept';
+                } else {
+                    action = await this.cli.confirmGroupedCommit(commit);
+                }
 
                 if (action === 'accept') {
                     await this.executeCommit(context.git, commit, context.repoName, [], null);
@@ -154,7 +160,13 @@ class SmartCommit {
             if (skippedCommits.length > 0) {
                 console.log('\n🔄 Reviewing skipped commits...\n');
                 for (const commit of skippedCommits) {
-                    const action = await this.cli.confirmGroupedCommit(commit);
+                    let action;
+                    if (context.hasFlag('auto')) {
+                        console.log('🤖 Auto mode: Automatically accepting skipped grouped commit...');
+                        action = 'accept';
+                    } else {
+                        action = await this.cli.confirmGroupedCommit(commit);
+                    }
                     if (action === 'accept') {
                         await this.executeCommit(context.git, commit, context.repoName, [], null);
                     } else {
