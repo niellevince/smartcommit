@@ -13,11 +13,6 @@ const GROUPED_COMMITS_PROMPT = {
             "Use present tense ('add' not 'added')",
             "Be specific about what changed",
             "Explain the 'why' in the description",
-            "Order commits based on dependencies: place commits with least dependencies first",
-            "Analyze git diff context to determine logical commit sequence",
-            "Prioritize foundational changes (new files, core structures) before dependent modifications",
-            "Ensure commits can be applied in order without conflicts",
-            "Consider import relationships, function calls, and structural dependencies",
         ],
         outputFormat: [
             {
