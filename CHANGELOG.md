@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2025-10-14
+
+### ✨ Added
+- **Auto Mode for Grouped Commits**: `--auto` flag now works with `--grouped` mode, automatically accepting all generated grouped commits without user confirmation
+- **Enhanced Auto Mode**: Auto-accept functionality extended to both initial grouped commit review and skipped commit review phases
+
+### 🔄 Changed
+- **Grouped Commit Logic**: Updated `processGroupedCommit` method to check for `--auto` flag and bypass interactive confirmation when enabled
+- **Auto Mode Consistency**: Auto mode now provides consistent behavior across all commit modes (single and grouped)
+
 ## [2.3.0] - 2025-10-13
 
 ### ✨ Added
