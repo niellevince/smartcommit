@@ -16,7 +16,8 @@ class CommandContext {
             patch: options.patch || false,
             files: options.files || false,
             auto: options.auto || false,
-            grouped: options.grouped || false
+            grouped: options.grouped || false,
+            pullRequest: options.pullRequest || false
         };
 
         // Runtime state

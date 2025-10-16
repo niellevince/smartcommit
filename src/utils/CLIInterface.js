@@ -1,4 +1,5 @@
 const inquirer = require('inquirer');
+const clipboardy = require('clipboardy');
 const { Logger } = require('./Logger');
 
 class CLIInterface {
@@ -242,6 +243,108 @@ class CLIInterface {
         ]);
 
         return apiKey.trim();
+    }
+
+    async selectCommitCount() {
+        const { count } = await inquirer.prompt([
+            {
+                type: 'list',
+                name: 'count',
+                message: 'How many recent commits to show?',
+                choices: [
+                    { name: '5 commits', value: 5 },
+                    { name: '10 commits', value: 10 },
+                    { name: '20 commits', value: 20 },
+                    { name: '50 commits', value: 50 },
+                    { name: 'Custom number', value: 'custom' }
+                ],
+                default: 10
+            }
+        ]);
+
+        if (count === 'custom') {
+            const { customCount } = await inquirer.prompt([
+                {
+                    type: 'number',
+                    name: 'customCount',
+                    message: 'Enter number of commits to show:',
+                    default: 10,
+                    validate: (input) => {
+                        const num = parseInt(input);
+                        if (isNaN(num) || num <= 0) {
+                            return 'Please enter a positive number';
+                        }
+                        if (num > 100) {
+                            return 'Maximum 100 commits allowed';
+                        }
+                        return true;
+                    }
+                }
+            ]);
+            return customCount;
+        }
+
+        return count;
+    }
+
+    async selectCommits(commits) {
+        console.log('\n🤖 Recent Commits:\n');
+
+        const choices = commits.map(commit => ({
+            name: `${commit.hash.substring(0, 7)} - ${commit.message}`,
+            value: commit,
+            checked: false // Default to unchecked
+        }));
+
+        const { selectedCommits } = await inquirer.prompt([
+            {
+                type: 'checkbox',
+                name: 'selectedCommits',
+                message: 'Select commits for this pull request:',
+                choices: choices,
+                pageSize: 15,
+                validate: (answer) => {
+                    if (answer.length < 1) {
+                        return 'You must choose at least one commit for the pull request.';
+                    }
+                    return true;
+                }
+            }
+        ]);
+
+        return selectedCommits;
+    }
+
+    async displayPullRequest(prData) {
+        console.log('\n📋 Pull Request Generated:\n');
+        console.log('='.repeat(50));
+        console.log(`📋 Pull Request Title:`);
+        console.log(`${prData.title}\n`);
+        console.log(`📋 Pull Request Description:`);
+        console.log(`${prData.description}`);
+        console.log('='.repeat(50));
+
+        const { copyToClipboard } = await inquirer.prompt([
+            {
+                type: 'confirm',
+                name: 'copyToClipboard',
+                message: 'Copy to clipboard?',
+                default: true
+            }
+        ]);
+
+        if (copyToClipboard) {
+            try {
+                const fullPR = `${prData.title}\n\n${prData.description}`;
+                await clipboardy.write(fullPR);
+                console.log('📋 Copied to clipboard successfully!');
+            } catch (error) {
+                console.log('⚠️  Clipboard copy failed, please copy manually');
+                console.log('💡 You can copy the text above directly');
+            }
+        }
+
+        return copyToClipboard;
     }
 
     async promptForModel() {

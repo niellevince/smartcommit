@@ -50,6 +50,7 @@ class SmartCommit {
             .option('--files', 'File selection mode (select specific files to include)')
             .option('-a, --auto', 'Auto-accept generated commit (skip confirmation)')
             .option('--grouped', 'Group changes into related commits')
+            .option('--pull-request', 'Generate pull request description from selected commits')
             .argument('[path]', 'Repository path', '.');
 
         program.addHelpText('after', this.getHelpText());
@@ -95,7 +96,74 @@ class SmartCommit {
             return;
         }
 
+        if (context.hasFlag('pull-request')) {
+            await this.processPullRequest(context);
+            return;
+        }
+
         await this.processCommit(context);
+    }
+
+    async processPullRequest(context) {
+        try {
+            console.log('🔍 SmartCommit - Pull Request Generator\n');
+
+            const isRepo = await context.git.checkIsRepo();
+            if (!isRepo) {
+                console.error('❌ Error: Not a git repository!');
+                process.exit(1);
+            }
+
+            // Display context information
+            const displayInfo = context.getDisplayInfo();
+            displayInfo.forEach(info => console.log(info));
+            console.log();
+
+            // Get commit count from user
+            const commitCount = await this.cli.selectCommitCount();
+
+            // Fetch recent commits
+            console.log(`🔍 Fetching ${commitCount} recent commits...`);
+            const recentCommits = await this.gitManager.getRecentCommits(context.git, commitCount);
+
+            if (!recentCommits || recentCommits.length === 0) {
+                console.log('❌ No commits found in this repository.');
+                process.exit(1);
+            }
+
+            // Let user select commits
+            const selectedCommits = await this.cli.selectCommits(recentCommits);
+
+            if (!selectedCommits || selectedCommits.length === 0) {
+                console.log('❌ No commits selected. Operation cancelled.');
+                process.exit(0);
+            }
+
+            console.log(`\n🤖 Generating pull request description for ${selectedCommits.length} selected commit(s)...`);
+
+            // Generate PR description with AI
+            const prData = await this.aiManager.generatePullRequestDescription(
+                selectedCommits,
+                context.config.OPENROUTER_API_KEY,
+                context.repoName,
+                context.getAdditionalContext()
+            );
+
+            if (!prData) {
+                console.log('🤖 AI could not generate pull request description. Please try again.');
+                process.exit(0);
+            }
+
+            // Display PR and offer clipboard copy
+            await this.cli.displayPullRequest(prData);
+
+            console.log('\n🎉 Pull request description generated successfully!');
+            console.log('💡 You can now paste this into your pull request on GitHub/GitLab/etc.');
+
+        } catch (error) {
+            console.error(`\n❌ Error: ${error.message}`);
+            process.exit(1);
+        }
     }
 
     async processGroupedCommit(context) {
@@ -449,8 +517,10 @@ EXAMPLES:
   smartc --radius 20                      # Use larger context radius (20 lines)
   smartc --clean                          # Reset all configuration and history
   smartc --grouped                        # Group changes into related commits
+  smartc --pull-request                   # Generate PR from selected commits
 
 FEATURES:
+  ✨ AI-generated pull request descriptions from selected commits
   ✨ AI-generated commit messages using OpenRouter API
   🤖 Multiple AI models supported (Grok, Claude, GPT-4, Gemini, etc.)
   🆓 Free tier available with X.AI Grok models

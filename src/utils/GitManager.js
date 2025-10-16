@@ -425,6 +425,24 @@ class GitManager {
         }
     }
 
+    async getRecentCommits(git, limit = 10) {
+        try {
+            const log = await git.log({
+                '--oneline': null,
+                '-n': limit
+            });
+
+            return log.all.map(commit => ({
+                hash: commit.hash,
+                message: commit.message,
+                author: commit.author_name,
+                date: commit.date
+            }));
+        } catch (error) {
+            throw new Error(`Failed to get commit history: ${error.message}`);
+        }
+    }
+
     getRepoName(repoPath) {
         return path.basename(path.resolve(repoPath));
     }

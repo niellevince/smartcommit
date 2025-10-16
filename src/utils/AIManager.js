@@ -2,6 +2,7 @@ const axios = require('axios');
 const { Logger } = require('./Logger');
 const { GROUPED_COMMITS_PROMPT } = require('../prompts/groupedCommits');
 const { buildCommitMessageInstructions } = require('../prompts/commitMessage');
+const { PULL_REQUEST_PROMPT } = require('../prompts/pullRequest');
 
 class AIManager {
     constructor() {
@@ -420,6 +421,122 @@ class AIManager {
 
         } catch (error) {
             throw new Error(`API connection failed: ${error.response?.data?.error?.message || error.message}`);
+        }
+    }
+
+    async generatePullRequestDescription(selectedCommits, apiKey, repoName, additionalContext = null) {
+        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+            try {
+                this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating pull request description...`);
+
+                const request = this.buildPullRequestRequest(selectedCommits, additionalContext);
+                const startTime = Date.now();
+
+                // OpenRouter API call
+                const response = await axios.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    {
+                        model: this.model || 'google/gemini-2.5-flash-lite',
+                        messages: [
+                            {
+                                role: 'user',
+                                content: request
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2500
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
+                            'X-Title': 'SmartCommit',
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                const generationTime = Date.now() - startTime;
+                const text = response.data.choices[0].message.content;
+                const prData = this.parsePullRequest(text);
+
+                if (prData && prData.title) {
+                    this.logger.success(`✅ Pull request description generated successfully on attempt ${attempt} (${generationTime}ms)`);
+                    return prData;
+                }
+
+                throw new Error('Generated pull request could not be parsed or was empty');
+
+            } catch (error) {
+                this.logger.warn(`⚠️  Attempt ${attempt} failed: ${error.message}`);
+
+                if (attempt === this.maxRetries) {
+                    throw new Error(`Failed to generate pull request description after ${this.maxRetries} attempts. Last error: ${error.message}`);
+                }
+
+                const delay = Math.pow(2, attempt) * 1000;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    buildPullRequestRequest(selectedCommits, additionalContext = null) {
+        const commitsData = selectedCommits.map(commit => ({
+            hash: commit.hash.substring(0, 7), // Short hash
+            message: commit.message,
+            author: commit.author,
+            date: commit.date
+        }));
+
+        const instructions = {
+            ...PULL_REQUEST_PROMPT.instructions,
+            guidelines: [
+                ...PULL_REQUEST_PROMPT.instructions.guidelines,
+                additionalContext ? "Pay special attention to the additional context provided by the user" : null
+            ].filter(Boolean)
+        };
+
+        const structuredRequest = {
+            instructions: instructions,
+            context: {
+                repository: this.getRepoName(),
+                selectedCommitsCount: selectedCommits.length,
+                additionalContext: additionalContext
+            },
+            commits: commitsData
+        };
+
+        return JSON.stringify(structuredRequest, null, 2);
+    }
+
+    parsePullRequest(aiResponse) {
+        try {
+            let cleanedResponse = aiResponse.trim();
+
+            if (cleanedResponse.startsWith('```json')) {
+                cleanedResponse = cleanedResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanedResponse.startsWith('```')) {
+                cleanedResponse = cleanedResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+
+            const parsed = JSON.parse(cleanedResponse);
+
+            if (!parsed.title || !parsed.description) {
+                throw new Error('AI response missing required title or description fields');
+            }
+
+            return {
+                title: parsed.title,
+                description: parsed.description,
+                summary: parsed.summary || '',
+                breaking: parsed.breaking || false,
+                issues: parsed.issues || [],
+                type: parsed.type || 'feat'
+            };
+
+        } catch (error) {
+            this.logger.warn('⚠️  Failed to parse JSON response for pull request.');
+            return null;
         }
     }
 
