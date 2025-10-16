@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-10-16
+
+### ✨ Added
+- **Pull Request Generator**: New `--pull-request` flag to generate AI-powered pull request descriptions from selected commits
+- **Interactive Commit Selection**: Choose how many recent commits to show (5/10/20/50/custom) and select specific commits using checkbox interface
+- **AI-Generated PR Content**: Uses OpenRouter API to create comprehensive PR titles and descriptions based on selected commits
+- **Clipboard Integration**: Automatic clipboard copy of generated PR content using `clipboardy` package
+- **Smart PR Formatting**: Generates professional PR descriptions with summary, changes, and issue references
+
+### 🔄 Changed
+- **Dependencies**: Added `clipboardy` package for cross-platform clipboard support
+- **Help Documentation**: Updated with `--pull-request` usage examples and features
+
+### 🐛 Fixed
+- **Syntax Validation**: All new code passes Node.js syntax checks
+
 ## [2.3.1] - 2025-10-14
 
 ### ✨ Added
