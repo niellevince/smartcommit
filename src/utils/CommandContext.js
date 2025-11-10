@@ -17,7 +17,7 @@ class CommandContext {
             files: options.files || false,
             auto: options.auto || false,
             grouped: options.grouped || false,
-            pullRequest: options.pullRequest || false
+            'pull-request': options.pullRequest || false
         };
 
         // Runtime state
@@ -54,8 +54,9 @@ class CommandContext {
      * Check if a specific flag is enabled
      */
     hasFlag(flagName) {
-        return this.flags[flagName] === true || 
-               (flagName === 'interactive' && this.flags.patch === true);
+        return this.flags[flagName] === true ||
+                (flagName === 'interactive' && this.flags.patch === true) ||
+                (flagName === 'pull-request' && this.flags['pull-request'] === true);
     }
 
     /**
