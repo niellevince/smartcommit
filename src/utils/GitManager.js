@@ -427,10 +427,8 @@ class GitManager {
 
     async getRecentCommits(git, limit = 10) {
         try {
-            const log = await git.log({
-                '--oneline': null,
-                '-n': limit
-            });
+            // Use array format for simple-git options
+            const log = await git.log([`-n ${limit}`, '--oneline']);
 
             return log.all.map(commit => ({
                 hash: commit.hash,
