@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2025-11-10
+
+### 🐛 Fixed
+- **Grouped Commits Staging Bug**: Fixed critical bug where `--grouped` flag could stage all repository changes instead of only the AI-specified files for each commit
+- **Generation Tracking**: Grouped commits now properly update generation status to "accepted" instead of remaining marked as "rejected"
+- **History Context**: Restored commit history context for grouped operations, allowing AI to learn from previous commits
+- **Transaction Safety**: Added error handling for grouped operations to prevent repository corruption when individual commits fail
+- **Dependency Ordering**: Enhanced AI prompt to consider file dependencies and import relationships when ordering grouped commits
+
+### 🔄 Changed
+- **Staging Logic**: Reordered `executeCommit` staging priorities to ensure grouped commits only stage intended files
+- **Error Resilience**: Grouped operations now continue with remaining commits even if individual commits fail
+- **Commit Tracking**: Added proper generation file creation and status updates for each grouped commit
+
+### ✨ Added
+- **Enhanced Grouped Commit Safety**: Added commit counting and failure reporting for better user feedback during grouped operations
+- **Dependency-Aware Ordering**: AI now analyzes code relationships to order commits logically and prevent conflicts
+
 ## [2.4.0] - 2025-10-16
 
 ### ✨ Added
