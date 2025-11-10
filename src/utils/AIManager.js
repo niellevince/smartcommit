@@ -152,8 +152,9 @@ class AIManager {
         const filesData = {};
         files.forEach(file => {
             const content = fileContents[file.path] || '[Unable to read file]';
-            const truncatedContent = content && content.length > 2000
-                ? content.substring(0, 2000) + '\n\n[Content truncated - showing first 2000 characters]'
+            // Increase content limit for file-based analysis (more content needed to understand relationships)
+            const truncatedContent = content && content.length > 4000
+                ? content.substring(0, 4000) + '\n\n[Content truncated - showing first 4000 characters]'
                 : content;
 
             filesData[file.path] = {
@@ -165,7 +166,11 @@ class AIManager {
                 content: truncatedContent,
                 path: file.path,
                 isBinary: this.isBinaryFile(file.path),
-                size: content ? content.length : 0
+                size: content ? content.length : 0,
+                // Add file type information for better grouping
+                fileType: this.getFileType(file.path),
+                // Extract basic relationship hints from content
+                relationships: this.extractFileRelationships(content, file.path)
             };
         });
 
@@ -183,11 +188,13 @@ class AIManager {
             context: {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
-                additionalContext: additionalContext
+                additionalContext: additionalContext,
+                groupingStrategy: "file-based" // Indicate we're using file-based grouping
             },
-            diff: {
-                staged: diffData.stagedDiff || '',
-                unstaged: diffData.unstagedDiff || ''
+            // Reduce diff emphasis, focus on files
+            summary: {
+                totalFiles: files.length,
+                fileTypes: this.getFileTypeSummary(files)
             },
             files: filesData
         };
@@ -564,6 +571,120 @@ class AIManager {
         }
 
         return 'No changes';
+    }
+
+    getFileType(filepath) {
+        const ext = require('path').extname(filepath).toLowerCase();
+        const filename = require('path').basename(filepath).toLowerCase();
+
+        // Test files
+        if (filename.includes('.test.') || filename.includes('.spec.') || filename.includes('test_') || filename.includes('_test')) {
+            return 'test';
+        }
+
+        // Configuration files
+        if (['package.json', 'package-lock.json', 'yarn.lock', 'tsconfig.json', 'webpack.config.js', '.eslintrc', '.prettierrc'].includes(filename) ||
+            ext === '.config.js' || ext === '.config.ts' || filename.startsWith('.')) {
+            return 'config';
+        }
+
+        // Documentation
+        if (ext === '.md' || ext === '.txt' || filename === 'readme' || filename === 'changelog') {
+            return 'docs';
+        }
+
+        // Source code by extension
+        if (['.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.cpp', '.c', '.cs', '.php', '.rb', '.go', '.rs'].includes(ext)) {
+            return 'source';
+        }
+
+        // Styles
+        if (['.css', '.scss', '.sass', '.less', '.styl'].includes(ext)) {
+            return 'styles';
+        }
+
+        // Templates/views
+        if (['.html', '.ejs', '.pug', '.jade', '.hbs', '.vue', '.svelte'].includes(ext)) {
+            return 'template';
+        }
+
+        // Assets
+        if (['.json', '.xml', '.yaml', '.yml'].includes(ext)) {
+            return 'data';
+        }
+
+        return 'other';
+    }
+
+    extractFileRelationships(content, filepath) {
+        if (!content || typeof content !== 'string' || this.isBinaryFile(filepath)) {
+            return { imports: [], exports: [], references: [] };
+        }
+
+        const relationships = {
+            imports: [],
+            exports: [],
+            references: []
+        };
+
+        try {
+            const lines = content.split('\n');
+
+            lines.forEach(line => {
+                const trimmed = line.trim();
+
+                // JavaScript/TypeScript imports
+                if (trimmed.startsWith('import ') || trimmed.startsWith('from ')) {
+                    const importMatch = trimmed.match(/from ['"]([^'"]+)['"]/);
+                    if (importMatch) {
+                        relationships.imports.push(importMatch[1]);
+                    }
+                }
+
+                // JavaScript/TypeScript exports
+                if (trimmed.startsWith('export ')) {
+                    // Extract what is being exported
+                    const exportMatch = trimmed.match(/export (?:default |const |function |class )?(\w+)/);
+                    if (exportMatch) {
+                        relationships.exports.push(exportMatch[1]);
+                    }
+                }
+
+                // Python imports
+                if (trimmed.startsWith('import ') || trimmed.startsWith('from ')) {
+                    const pyImportMatch = trimmed.match(/(?:import|from) ([\w.]+)/);
+                    if (pyImportMatch) {
+                        relationships.imports.push(pyImportMatch[1]);
+                    }
+                }
+
+                // General class/function definitions (for reference tracking)
+                const definitionMatch = trimmed.match(/(?:class |function |def |public |private )\s+(\w+)/);
+                if (definitionMatch) {
+                    relationships.exports.push(definitionMatch[1]);
+                }
+            });
+
+            // Remove duplicates
+            relationships.imports = [...new Set(relationships.imports)];
+            relationships.exports = [...new Set(relationships.exports)];
+
+        } catch (error) {
+            // If parsing fails, return empty relationships
+            return { imports: [], exports: [], references: [] };
+        }
+
+        return relationships;
+    }
+
+    getFileTypeSummary(files) {
+        const typeCounts = {};
+        files.forEach(file => {
+            const type = this.getFileType(file.path);
+            typeCounts[type] = (typeCounts[type] || 0) + 1;
+        });
+
+        return Object.entries(typeCounts).map(([type, count]) => `${type}: ${count}`).join(', ');
     }
 }
 
