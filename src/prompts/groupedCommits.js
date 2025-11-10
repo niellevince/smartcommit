@@ -2,7 +2,7 @@ const { COMMIT_TYPES } = require('../constants');
 
 const GROUPED_COMMITS_PROMPT = {
     instructions: {
-        task: "Analyze the provided code changes and group them into a series of related commits. Each commit should represent a logical unit of work. Order commits by dependencies to avoid conflicts.",
+        task: "Analyze the provided files and group them into logical commits based on their purpose, relationships, and dependencies. Each commit should represent a cohesive unit of related functionality.",
         format: "Return a JSON array of commit objects, where each object has the specified structure.",
         guidelines: [
             "Each commit object must have a 'summary', 'description', and 'files' array.",
@@ -11,13 +11,18 @@ const GROUPED_COMMITS_PROMPT = {
             `Use conventional commit types: ${COMMIT_TYPES.join(', ')}`,
             "Keep summary under 50 characters",
             "Use present tense ('add' not 'added')",
-            "Be specific about what changed",
-            "Explain the 'why' in the description",
-            "ORDER COMMITS BY DEPENDENCIES: Place commits with least dependencies first",
-            "Consider import relationships, function calls, and structural dependencies",
-            "Group related changes together (e.g., API changes with their tests)",
-            "Separate unrelated features, bug fixes, and refactoring into different commits",
-            "Ensure commits can be applied in the suggested order without conflicts"
+            "Analyze the FULL CONTENT of each file to understand its purpose and relationships",
+            "GROUP FILES BY FEATURE/DOMAIN: Files related to the same functionality should be grouped together",
+            "Example: profile.ts (types) + Profile.vue (component) belong in the same commit if they implement profile functionality",
+            "Example: Select.vue and TextArea.vue should be in DIFFERENT commits if they're unrelated UI components",
+            "Group files by their functional relationships and dependencies",
+            "Consider import statements, function calls, and class relationships between files",
+            "Group related components, utilities, tests, and configuration files together",
+            "Separate distinct features, modules, or concerns into different commits",
+            "Order commits logically: foundational changes first, then dependent features",
+            "Consider file types and their typical relationships (e.g., API files with their tests)",
+            "Focus on logical cohesion rather than just physical proximity in the codebase",
+            "Ensure commits represent meaningful, reviewable units of work"
         ],
         outputFormat: [
             {
