@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2025-11-14
+
+### 🔄 Changed
+
+- **Terminology Update**: Renamed `--additional` flag terminology from "additional context" to "additional instruction" for better clarity
+- **User-Facing Messages**: Updated all CLI messages, prompts, and documentation to use "additional instruction" terminology
+- **AI Prompt Structure**: Changed JSON field name from `additionalContext` to `additionalInstruction` in AI request payloads
+
+### 📝 Documentation
+
+- Updated README.md, CHANGELOG.md, and all documentation files to reflect terminology change
+- Updated prompt instructions sent to AI models to use "instruction" terminology
+
 ## [2.6.0] - 2025-11-10
 
 ### ✨ Added

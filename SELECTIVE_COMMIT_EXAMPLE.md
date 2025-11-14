@@ -31,7 +31,7 @@ smartc --only "database schema changes"
 
 ### Combined with Other Flags
 ```bash
-# Selective commit with additional context
+# Selective commit with additional instruction
 smartc --only "bug fixes" --additional "Resolves issue #123"
 
 # Selective commit with custom radius
@@ -111,7 +111,7 @@ When using `--only`, the AI response includes a `selectedFiles` array:
 
 1. **Be Specific**: Use descriptive context like "authentication fixes" instead of just "fixes"
 2. **Use Domain Language**: Reference specific components, modules, or features
-3. **Combine Wisely**: Use with `--additional` for extra context when needed
+3. **Combine Wisely**: Use with `--additional` for extra instruction when needed
 4. **Review Before Committing**: Always review the selected files before confirming
 
 ## Troubleshooting

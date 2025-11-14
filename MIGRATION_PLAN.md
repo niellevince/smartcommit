@@ -423,7 +423,7 @@ FEATURES:
   🤖 Auto-accept mode for CI/CD and automated workflows
   📚 Learns from your commit history for better context
   🚀 Automatic staging and pushing
-  📋 Additional context support for better accuracy
+  📋 Additional instruction support for better accuracy
   🔍 Selective commits - commit only changes related to specific context
   🎨 Interactive staging - select specific hunks/lines before AI generation
   📁 File selection - select specific files to include in commit
@@ -606,7 +606,7 @@ metadata: {
 - [ ] Interactive staging works
 - [ ] File selection works
 - [ ] Selective commit (--only) works
-- [ ] Additional context (--additional) works
+- [ ] Additional instruction (--additional) works
 - [ ] Auto mode (--auto) works
 - [ ] Context radius (--radius) works
 - [ ] Regeneration works

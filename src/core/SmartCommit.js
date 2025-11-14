@@ -35,7 +35,7 @@ class SmartCommit {
             .option('--clean', 'Clean all data and reset configuration')
             .option('--test', 'Test API connection with a simple hello message')
             .option('--model <model>', 'Override the configured AI model for this run')
-            .option('--additional <context>', 'Provide additional context to help AI generate more accurate commit messages')
+            .option('--additional <instruction>', 'Provide additional instruction to help AI generate more accurate commit messages')
             .option('--radius <number>', 'Set context radius (default: 10 lines around changes)', (value) => {
                 const parsedValue = parseInt(value);
                 if (isNaN(parsedValue) || parsedValue <= 0) {
@@ -190,11 +190,12 @@ class SmartCommit {
 
             console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
 
+            // Generate grouped commits with additional instruction if provided (--additional flag)
             const groupedCommits = await this.aiManager.generateGroupedCommits(
                 diffData,
                 context.config.OPENROUTER_API_KEY,
                 context.repoName,
-                context.getAdditionalContext()
+                context.getAdditionalContext() // Supports --additional flag
             );
 
             if (!groupedCommits || groupedCommits.length === 0) {
@@ -360,12 +361,14 @@ class SmartCommit {
                 attempts++;
 
                 try {
+                    // Generate commit message with additional instruction if provided (--additional flag)
+                    // Works with --files mode, --interactive mode, and regular commits
                     const result = await this.aiManager.generateCommitMessage(
                         diffData,
                         context.history,
                         context.config.OPENROUTER_API_KEY,
                         context.repoName,
-                        context.getAdditionalContext(),
+                        context.getAdditionalContext(), // Supports --additional flag (works with --files)
                         context.getSelectiveContext()
                     );
 
@@ -534,8 +537,8 @@ EXAMPLES:
   smartc --test                           # Test API connection with hello message
   smartc --model anthropic/claude-3.5-sonnet  # Use Claude for this commit
   smartc --model openai/gpt-4o            # Use GPT-4o for this commit
-  smartc --additional "Fixed bug #123"    # Include extra context for AI
-  smartc . --additional "Refactoring"     # Combine path and context
+  smartc --additional "Fixed bug #123"    # Include extra instruction for AI
+  smartc . --additional "Refactoring"     # Combine path and instruction
   smartc --only "authentication fixes"    # Commit only auth-related changes
   smartc --interactive                    # Interactive staging mode
   smartc --patch                          # Interactive staging mode (alias)
@@ -560,7 +563,7 @@ FEATURES:
   🤖 Auto-accept mode for CI/CD and automated workflows
   📚 Learns from your commit history for better context
   🚀 Automatic staging and pushing
-  📋 Additional context support for better accuracy
+  📋 Additional instruction support for better accuracy
   🔍 Selective commits - commit only changes related to specific context
   🎨 Interactive staging - select specific hunks/lines before AI generation
   📁 File selection - select specific files to include in commit

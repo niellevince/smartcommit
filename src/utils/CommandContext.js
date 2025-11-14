@@ -82,7 +82,7 @@ class CommandContext {
     }
 
     /**
-     * Get additional context if provided
+     * Get additional instruction if provided
      */
     getAdditionalContext() {
         return this.flags.additional;
@@ -123,7 +123,7 @@ class CommandContext {
         }
 
         if (this.getAdditionalContext()) {
-            info.push(`📋 Additional context: "${this.getAdditionalContext()}"`);
+            info.push(`📋 Additional instruction: "${this.getAdditionalContext()}"`);
         }
 
         if (this.getSelectiveContext()) {

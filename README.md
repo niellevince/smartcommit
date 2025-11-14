@@ -10,7 +10,7 @@ AI-powered git commit message generator using OpenRouter API. Generate professio
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
 -   **Commit History Context**: Learns from your previous commits to generate better messages
 -   **Interactive CLI**: Choose to commit, regenerate, or cancel with a beautiful terminal interface
--   **Grouped Commits**: Use AI to group all your changes into a series of related commits, allowing you to review and accept each one individually. Now supports `--additional` context for better AI analysis and orders commits by dependencies for logical application sequence.
+-   **Grouped Commits**: Use AI to group all your changes into a series of related commits, allowing you to review and accept each one individually. Now supports `--additional` instruction for better AI analysis and orders commits by dependencies for logical application sequence.
 -   **Interactive Staging**: Select specific hunks/lines before AI generation with `--interactive` or `--patch`
 -   **File Selection**: Choose specific files to include in your commit with `--files`
 -   **Auto-Accept Mode**: Skip confirmation with `--auto` or `-a` for CI/CD workflows
@@ -109,7 +109,7 @@ smartc -a             # Short form for auto-accept
 ### Advanced Usage
 
 ```bash
-# Include additional context for AI
+# Include additional instruction for AI
 smartc --additional "Fixed the login bug by updating the authentication flow"
 
 # Commit only changes related to specific context
@@ -120,7 +120,7 @@ smartc --clean
 
 # Grouped commit mode - let AI group changes into related commits
 smartc --grouped
-smartc --grouped --additional "Refactoring authentication module"  # Now works!
+smartc --grouped --additional "Refactoring authentication module"  # Now works with additional instruction!
 ```
 
 ### Workflow
@@ -129,7 +129,7 @@ smartc --grouped --additional "Refactoring authentication module"  # Now works!
 2. Run `smartc` in your repository
    - Use `--interactive` or `--patch` to select specific hunks/lines
    - Use `--files` to select specific files
-   - Use `--additional "context"` to provide additional context
+   - Use `--additional "instruction"` to provide additional instruction
    - Use `--only "context"` for selective commits
    - Use `--auto` or `-a` to skip confirmation
 3. Review the AI-generated commit message

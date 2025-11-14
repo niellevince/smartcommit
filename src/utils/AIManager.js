@@ -67,7 +67,7 @@ class AIManager {
                             structuredRequest: JSON.parse(request),         // Full structured request
                             fileCount: diffData.files.length,              // File count
                             changedFiles: diffData.files.map(f => f.path), // Changed files list
-                            additionalContext: additionalContext,          // Additional context
+                            additionalContext: additionalContext,          // Additional instruction
                             model: response.data.model,                     // Actual model used
                             generationTime: generationTime                 // Generation time in requestData too
                         }
@@ -174,12 +174,12 @@ class AIManager {
             };
         });
 
-        // Update instructions with additional context if provided
+        // Update instructions with additional instruction if provided
         const instructions = {
             ...GROUPED_COMMITS_PROMPT.instructions,
             guidelines: [
                 ...GROUPED_COMMITS_PROMPT.instructions.guidelines,
-                additionalContext ? "Pay special attention to the additional context provided by the user" : null
+                additionalContext ? "Pay special attention to the additional instruction provided by the user" : null
             ].filter(Boolean)
         };
 
@@ -188,7 +188,7 @@ class AIManager {
             context: {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
-                additionalContext: additionalContext,
+                additionalInstruction: additionalContext,
                 groupingStrategy: "file-based" // Indicate we're using file-based grouping
             },
             // Reduce diff emphasis, focus on files
@@ -268,7 +268,7 @@ class AIManager {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
                 recentCommits: recentCommits,
-                additionalContext: additionalContext,
+                additionalInstruction: additionalContext,
                 selectiveContext: selectiveContext
             },
             diff: {
@@ -499,7 +499,7 @@ class AIManager {
             ...PULL_REQUEST_PROMPT.instructions,
             guidelines: [
                 ...PULL_REQUEST_PROMPT.instructions.guidelines,
-                additionalContext ? "Pay special attention to the additional context provided by the user" : null
+                additionalContext ? "Pay special attention to the additional instruction provided by the user" : null
             ].filter(Boolean)
         };
 
@@ -508,7 +508,7 @@ class AIManager {
             context: {
                 repository: this.getRepoName(),
                 selectedCommitsCount: selectedCommits.length,
-                additionalContext: additionalContext
+                additionalInstruction: additionalContext
             },
             commits: commitsData
         };

@@ -16,7 +16,7 @@ const buildCommitMessageInstructions = (selectiveContext = null, additionalConte
             "Analyze the full file contents to understand the complete context",
             "Set 'breaking' to true only for breaking changes",
             "Include issue numbers in 'issues' array if this fixes any issues",
-            additionalContext ? "Pay special attention to the additional context provided by the user" : null,
+            additionalContext ? "Pay special attention to the additional instruction provided by the user" : null,
             selectiveContext ? `IMPORTANT: Only commit changes related to "${selectiveContext}". Identify which files/changes match this context and include only those in the commit. Add a 'selectedFiles' array listing the files that should be committed.` : null
         ].filter(Boolean),
         outputFormat: selectiveContext ? {

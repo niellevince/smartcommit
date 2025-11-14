@@ -88,7 +88,7 @@ class CLIInterface {
             {
                 type: 'input',
                 name: 'context',
-                message: 'Provide additional context for regeneration (optional):',
+                message: 'Provide additional instruction for regeneration (optional):',
                 default: ''
             }
         ]);

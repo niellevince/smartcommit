@@ -15,7 +15,7 @@ if (options.grouped) {
 }
 ```
 
-This meant that additional context provided via `--additional` was ignored in grouped commit mode.
+This meant that additional instruction provided via `--additional` was ignored in grouped commit mode.
 
 ## Solution
 
@@ -37,7 +37,7 @@ Key methods:
 - `hasFlag()`: Checks if a flag is enabled
 - `getFlag()`: Gets a flag's value
 - `isInteractiveMode()`: Checks for interactive or patch mode
-- `getAdditionalContext()`: Returns additional context
+- `getAdditionalContext()`: Returns additional instruction
 - `validate()`: Validates flag combinations
 - `getDisplayInfo()`: Returns formatted display information
 
@@ -109,7 +109,7 @@ Flag combination validation is now handled in one place (CommandContext.validate
 
 ### Basic Usage
 ```bash
-# Now works! Additional context is available in grouped mode
+# Now works! Additional instruction is available in grouped mode
 smartc --grouped --additional "Refactoring authentication module"
 ```
 
@@ -119,7 +119,7 @@ smartc --grouped --additional "Refactoring authentication module"
 smartc --grouped --additional "Bug fixes" --radius 15 --model anthropic/claude-3.5-sonnet
 ```
 
-### Interactive with Additional Context
+### Interactive with Additional Instruction
 ```bash
 smartc --interactive --additional "Adding new feature"
 ```
