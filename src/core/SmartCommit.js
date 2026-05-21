@@ -191,12 +191,16 @@ class SmartCommit {
             console.log(`📊 Found ${diffData.files.length} changed file(s)\n`);
 
             // Generate grouped commits with additional instruction if provided (--additional flag)
-            const groupedCommits = await this.aiManager.generateGroupedCommits(
+            const groupedResult = await this.aiManager.generateGroupedCommits(
                 diffData,
                 context.config.OPENROUTER_API_KEY,
                 context.repoName,
-                context.getAdditionalContext() // Supports --additional flag
+                context.getAdditionalContext(),
+                context.history
             );
+
+            const groupedCommits = groupedResult.commits;
+            const groupedRequestData = groupedResult.requestData;
 
             if (!groupedCommits || groupedCommits.length === 0) {
                 console.log('🤖 AI could not group the changes. Please try again.');
@@ -219,8 +223,8 @@ class SmartCommit {
 
                 if (action === 'accept') {
                     try {
-                        // Generate commit message for tracking
-                        const generationFile = this.historyManager.saveGeneration(context.repoName, commit, false, null);
+                        commit.isGrouped = true;
+                        const generationFile = this.historyManager.saveGeneration(context.repoName, commit, false, groupedRequestData);
                         commit.generationFilename = generationFile;
 
                         await this.executeCommit(context.git, commit, context.repoName, context.history, generationFile);
@@ -252,8 +256,8 @@ class SmartCommit {
                     }
                     if (action === 'accept') {
                         try {
-                            // Generate commit message for tracking
-                            const generationFile = this.historyManager.saveGeneration(context.repoName, commit, false, null);
+                            commit.isGrouped = true;
+                            const generationFile = this.historyManager.saveGeneration(context.repoName, commit, false, groupedRequestData);
                             commit.generationFilename = generationFile;
 
                             await this.executeCommit(context.git, commit, context.repoName, context.history, generationFile);
@@ -444,6 +448,8 @@ class SmartCommit {
                 console.log(`📦 Staging ${commitData.files.length} file(s) for this commit:`);
                 commitData.files.forEach(file => console.log(`   📄 ${file}`));
                 await this.gitManager.stageSelectedFiles(git, commitData.files);
+            } else if (commitData.isGrouped) {
+                throw new Error('Grouped commit has no files specified — refusing to stage all changes');
             } else if (commitData.selectedFiles && commitData.selectedFiles.length > 0) {
                 console.log(`🔍 Selective commit: staging ${commitData.selectedFiles.length} file(s):`);
                 commitData.selectedFiles.forEach(file => console.log(`   📄 ${file}`));

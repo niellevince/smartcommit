@@ -90,12 +90,14 @@ class AIManager {
         }
     }
 
-    async generateGroupedCommits(diffData, apiKey, repoName, additionalContext = null) {
+    async generateGroupedCommits(diffData, apiKey, repoName, additionalContext = null, history = []) {
+        const changedFilePaths = diffData.files.map(f => f.path);
+
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating grouped commits...`);
 
-                const request = this.buildGroupedRequest(diffData, additionalContext);
+                const request = this.buildGroupedRequest(diffData, additionalContext, history);
                 const startTime = Date.now();
 
                 // OpenRouter API call
@@ -124,11 +126,23 @@ class AIManager {
 
                 const generationTime = Date.now() - startTime;
                 const text = response.data.choices[0].message.content;
-                const commits = this.parseGroupedCommits(text);
+                const commits = this.parseGroupedCommits(text, changedFilePaths);
 
                 if (commits && commits.length > 0) {
                     this.logger.success(`✅ Grouped commits generated successfully on attempt ${attempt} (${generationTime}ms)`);
-                    return commits;
+                    return {
+                        commits,
+                        requestData: {
+                            rawResponse: text,
+                            parsedCommits: commits,
+                            structuredRequest: JSON.parse(request),
+                            fileCount: diffData.files.length,
+                            changedFiles: changedFilePaths,
+                            additionalContext,
+                            model: response.data.model,
+                            generationTime
+                        }
+                    };
                 }
 
                 throw new Error('Generated grouped commits could not be parsed or were empty');
@@ -146,8 +160,16 @@ class AIManager {
         }
     }
 
-    buildGroupedRequest(diffData, additionalContext = null) {
+    buildGroupedRequest(diffData, additionalContext = null, history = []) {
         const { files, fileContents } = diffData;
+
+        const recentCommits = history.slice(-3).map(commit => ({
+            summary: commit.summary,
+            description: commit.description ? commit.description.split('\n')[0] : null,
+            type: commit.type || null,
+            scope: commit.scope || null,
+            timestamp: commit.timestamp
+        }));
 
         const filesData = {};
         files.forEach(file => {
@@ -188,6 +210,7 @@ class AIManager {
             context: {
                 repository: this.getRepoName(),
                 changedFilesCount: files.length,
+                recentCommits,
                 additionalInstruction: additionalContext,
                 groupingStrategy: "file-based" // Indicate we're using file-based grouping
             },
@@ -202,7 +225,7 @@ class AIManager {
         return JSON.stringify(structuredRequest, null, 2);
     }
 
-    parseGroupedCommits(aiResponse) {
+    parseGroupedCommits(aiResponse, changedFilePaths = []) {
         try {
             let cleanedResponse = aiResponse.trim();
 
@@ -218,12 +241,68 @@ class AIManager {
                 throw new Error('AI response is not a valid array of commits');
             }
 
-            return parsed;
+            return this.sanitizeGroupedCommits(parsed, changedFilePaths);
 
         } catch (error) {
-            this.logger.warn('⚠️  Failed to parse JSON response for grouped commits.');
+            this.logger.warn(`⚠️  Failed to parse JSON response for grouped commits: ${error.message}`);
             return null;
         }
+    }
+
+    sanitizeGroupedCommits(parsed, changedFilePaths) {
+        const validPaths = new Set(changedFilePaths);
+        const assigned = new Set();
+        const sanitized = [];
+
+        for (const raw of parsed) {
+            if (!raw || !raw.summary || !raw.summary.trim()) {
+                this.logger.warn('⚠️  Skipping grouped commit with missing summary');
+                continue;
+            }
+
+            const files = Array.isArray(raw.files) ? raw.files : [];
+            const validFiles = [];
+
+            for (const file of files) {
+                if (!validPaths.has(file)) {
+                    this.logger.warn(`⚠️  Ignoring unknown file in grouped commit: ${file}`);
+                    continue;
+                }
+                if (assigned.has(file)) {
+                    this.logger.warn(`⚠️  Ignoring duplicate file in grouped commit: ${file}`);
+                    continue;
+                }
+                assigned.add(file);
+                validFiles.push(file);
+            }
+
+            if (validFiles.length === 0) {
+                this.logger.warn(`⚠️  Skipping grouped commit with no valid files: ${raw.summary}`);
+                continue;
+            }
+
+            sanitized.push({
+                summary: raw.summary.trim(),
+                description: (raw.description || '').trim(),
+                type: raw.type || null,
+                scope: raw.scope || null,
+                files: validFiles
+            });
+        }
+
+        const unassigned = changedFilePaths.filter(file => !assigned.has(file));
+        if (unassigned.length > 0) {
+            this.logger.warn(`⚠️  ${unassigned.length} file(s) were not assigned by AI; adding catch-all commit`);
+            sanitized.push({
+                summary: 'chore: update remaining files',
+                description: `Includes files not grouped by AI:\n${unassigned.map(file => `- ${file}`).join('\n')}`,
+                type: 'chore',
+                scope: null,
+                files: unassigned
+            });
+        }
+
+        return sanitized.length > 0 ? sanitized : null;
     }
 
     buildStructuredRequest(diffData, history, additionalContext = null, selectiveContext = null) {

@@ -104,6 +104,10 @@ class CommandContext {
             throw new Error('--interactive and --files flags cannot be used together');
         }
 
+        if (this.hasFlag('grouped') && (this.isInteractiveMode() || this.hasFlag('files') || this.getSelectiveContext())) {
+            throw new Error('--grouped cannot be used with --interactive, --patch, --files, or --only');
+        }
+
         return true;
     }
 

@@ -8,6 +8,7 @@ const GROUPED_COMMITS_PROMPT = {
             "Each commit object must have a 'summary', 'description', and 'files' array.",
             "The 'files' array should contain the file paths related to that commit.",
             "Each file should only appear in one commit group.",
+            "Every changed file MUST appear in exactly one commit — do not omit any files from the response.",
             `Use conventional commit types: ${COMMIT_TYPES.join(', ')}`,
             "Keep summary under 50 characters",
             "Use present tense ('add' not 'added')",
