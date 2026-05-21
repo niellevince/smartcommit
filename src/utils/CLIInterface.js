@@ -17,10 +17,11 @@ class CLIInterface {
             console.log(`⏱️  Generation Time: ${generationTime}ms`);
         }
 
-        if (changes && changes.length > 0) {
-            console.log(`\nChanges:`);
-            changes.forEach(change => console.log(`  - ${change}`));
-        }
+        // Skip displaying changes section to avoid redundancy with description
+        // if (changes && changes.length > 0) {
+        //     console.log(`\nChanges:`);
+        //     changes.forEach(change => console.log(`  - ${change}`));
+        // }
 
         if (description) {
             console.log(`\nDescription:\n${description}`);
