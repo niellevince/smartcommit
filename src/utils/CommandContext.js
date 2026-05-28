@@ -108,6 +108,10 @@ class CommandContext {
             throw new Error('--grouped cannot be used with --interactive, --patch, --files, or --only');
         }
 
+        if (this.hasFlag('grouped') && this.hasFlag('pull-request')) {
+            throw new Error('--grouped cannot be used with --pull-request');
+        }
+
         return true;
     }
 
