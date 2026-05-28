@@ -15,12 +15,26 @@ class AIManager {
         this.model = model;
     }
 
+    setMaxRetries(maxRetries) {
+        if (maxRetries && maxRetries > 0) {
+            this.maxRetries = maxRetries;
+        }
+    }
+
+    extractResponseContent(response) {
+        const content = response?.data?.choices?.[0]?.message?.content;
+        if (!content) {
+            throw new Error('API response missing message content');
+        }
+        return content;
+    }
+
     async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null, selectiveContext = null) {
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating commit message...`);
 
-                const request = this.buildStructuredRequest(diffData, history, additionalContext, selectiveContext);
+                const request = this.buildStructuredRequest(diffData, history, repoName, additionalContext, selectiveContext);
                 const startTime = Date.now();
 
                 // OpenRouter API call
@@ -48,7 +62,7 @@ class AIManager {
                 );
 
                 const generationTime = Date.now() - startTime;
-                const text = response.data.choices[0].message.content;
+                const text = this.extractResponseContent(response);
                 const commitData = this.parseCommitMessage(text);
 
                 if (commitData && commitData.summary) {
@@ -97,7 +111,7 @@ class AIManager {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating grouped commits...`);
 
-                const request = this.buildGroupedRequest(diffData, additionalContext, history);
+                const request = this.buildGroupedRequest(diffData, repoName, additionalContext, history);
                 const startTime = Date.now();
 
                 // OpenRouter API call
@@ -125,7 +139,7 @@ class AIManager {
                 );
 
                 const generationTime = Date.now() - startTime;
-                const text = response.data.choices[0].message.content;
+                const text = this.extractResponseContent(response);
                 const commits = this.parseGroupedCommits(text, changedFilePaths);
 
                 if (commits && commits.length > 0) {
@@ -160,7 +174,7 @@ class AIManager {
         }
     }
 
-    buildGroupedRequest(diffData, additionalContext = null, history = []) {
+    buildGroupedRequest(diffData, repoName, additionalContext = null, history = []) {
         const { files, fileContents } = diffData;
 
         const recentCommits = history.slice(-3).map(commit => ({
@@ -208,7 +222,7 @@ class AIManager {
         const structuredRequest = {
             instructions: instructions,
             context: {
-                repository: this.getRepoName(),
+                repository: repoName,
                 changedFilesCount: files.length,
                 recentCommits,
                 additionalInstruction: additionalContext,
@@ -305,7 +319,7 @@ class AIManager {
         return sanitized.length > 0 ? sanitized : null;
     }
 
-    buildStructuredRequest(diffData, history, additionalContext = null, selectiveContext = null) {
+    buildStructuredRequest(diffData, history, repoName, additionalContext = null, selectiveContext = null) {
         const { files, fileContents } = diffData;
 
         // Build recent commit history (last 3 commits like original)
@@ -344,7 +358,7 @@ class AIManager {
         const structuredRequest = {
             instructions: buildCommitMessageInstructions(selectiveContext, additionalContext),
             context: {
-                repository: this.getRepoName(),
+                repository: repoName,
                 changedFilesCount: files.length,
                 recentCommits: recentCommits,
                 additionalInstruction: additionalContext,
@@ -497,7 +511,7 @@ class AIManager {
             );
 
             const responseTime = Date.now() - startTime;
-            const aiResponse = response.data.choices[0].message.content.trim();
+            const aiResponse = this.extractResponseContent(response).trim();
 
             return {
                 response: aiResponse,
@@ -515,7 +529,7 @@ class AIManager {
             try {
                 this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating pull request description...`);
 
-                const request = this.buildPullRequestRequest(selectedCommits, additionalContext);
+                const request = this.buildPullRequestRequest(selectedCommits, repoName, additionalContext);
                 const startTime = Date.now();
 
                 // OpenRouter API call
@@ -543,7 +557,7 @@ class AIManager {
                 );
 
                 const generationTime = Date.now() - startTime;
-                const text = response.data.choices[0].message.content;
+                const text = this.extractResponseContent(response);
                 const prData = this.parsePullRequest(text);
 
                 if (prData && prData.title) {
@@ -566,7 +580,7 @@ class AIManager {
         }
     }
 
-    buildPullRequestRequest(selectedCommits, additionalContext = null) {
+    buildPullRequestRequest(selectedCommits, repoName, additionalContext = null) {
         const commitsData = selectedCommits.map(commit => ({
             hash: commit.hash.substring(0, 7), // Short hash
             message: commit.message,
@@ -585,7 +599,7 @@ class AIManager {
         const structuredRequest = {
             instructions: instructions,
             context: {
-                repository: this.getRepoName(),
+                repository: repoName,
                 selectedCommitsCount: selectedCommits.length,
                 additionalInstruction: additionalContext
             },
