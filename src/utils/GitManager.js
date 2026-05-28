@@ -30,6 +30,7 @@ class GitManager {
 
     async getGitDiff(git, radius = 10, selectedFiles = null) {
         try {
+            const repoRoot = git._baseDir || process.cwd();
             const status = await git.status();
 
             if (status.files.length === 0) {
@@ -59,7 +60,7 @@ class GitManager {
             }
 
             // Get contextual file contents with radius for filtered files only
-            const fileContents = await this.getFileContentsWithRadius(filteredFiles, git, radius);
+            const fileContents = await this.getFileContentsWithRadius(filteredFiles, git, radius, repoRoot);
 
             return {
                 status: {
@@ -76,20 +77,22 @@ class GitManager {
         }
     }
 
-    async getFileContentsWithRadius(files, git, radius = 10) {
+    async getFileContentsWithRadius(files, git, radius = 10, repoRoot = null) {
+        const root = repoRoot || git._baseDir || process.cwd();
         const contents = {};
 
         for (const file of files) {
             try {
                 const filepath = file.path;
+                const absolutePath = path.join(root, filepath);
 
                 // Handle file existence and basic checks
-                if (!fs.existsSync(filepath)) {
+                if (!fs.existsSync(absolutePath)) {
                     contents[filepath] = `[File deleted or moved]`;
                     continue;
                 }
 
-                const stats = fs.statSync(filepath);
+                const stats = fs.statSync(absolutePath);
 
                 // Skip binary files and very large files (>100KB)
                 if (stats.size > 100 * 1024) {
@@ -105,7 +108,7 @@ class GitManager {
 
                 // Handle new files (untracked or added) - include full content
                 if (file.working_dir === '?' || file.index === 'A') {
-                    const content = fs.readFileSync(filepath, 'utf8');
+                    const content = fs.readFileSync(absolutePath, 'utf8');
                     contents[filepath] = content.length > 2000
                         ? content.substring(0, 2000) + '\n\n[Content truncated - showing first 2000 characters]'
                         : content;
@@ -113,7 +116,7 @@ class GitManager {
                 }
 
                 // Get contextual content for modified files
-                const contextualContent = await this.getContextualContent(filepath, git, radius);
+                const contextualContent = await this.getContextualContent(filepath, git, radius, root);
                 contents[filepath] = contextualContent;
 
             } catch (error) {
@@ -124,7 +127,10 @@ class GitManager {
         return contents;
     }
 
-    async getContextualContent(filepath, git, radius) {
+    async getContextualContent(filepath, git, radius, repoRoot = null) {
+        const root = repoRoot || git._baseDir || process.cwd();
+        const absolutePath = path.join(root, filepath);
+
         try {
             // Get the diff for this specific file to extract changed line numbers
             const fileDiff = await git.diff(['--', filepath]);
@@ -136,7 +142,7 @@ class GitManager {
             }
 
             // Read the full file content
-            const fullContent = fs.readFileSync(filepath, 'utf8');
+            const fullContent = fs.readFileSync(absolutePath, 'utf8');
             const lines = fullContent.split('\n');
             const totalLines = lines.length;
 
@@ -148,7 +154,7 @@ class GitManager {
 
         } catch (error) {
             // Fallback to limited full content if diff parsing fails
-            const content = fs.readFileSync(filepath, 'utf8');
+            const content = fs.readFileSync(absolutePath, 'utf8');
             return content.length > 1000
                 ? content.substring(0, 1000) + '\n\n[Content truncated due to diff parsing error]'
                 : content;
@@ -236,13 +242,14 @@ class GitManager {
         return result;
     }
 
-    async getFileContents(files) {
+    async getFileContents(files, repoRoot = '.') {
         const contents = {};
 
         for (const file of files) {
             try {
                 const filepath = file.path;
-                const stats = fs.statSync(filepath);
+                const absolutePath = path.join(repoRoot, filepath);
+                const stats = fs.statSync(absolutePath);
 
                 // Skip binary files and very large files (>100KB)
                 if (stats.size > 100 * 1024) {
@@ -256,7 +263,7 @@ class GitManager {
                     continue;
                 }
 
-                const content = fs.readFileSync(filepath, 'utf8');
+                const content = fs.readFileSync(absolutePath, 'utf8');
                 contents[filepath] = content;
             } catch (error) {
                 contents[file.path] = `[Error reading file: ${error.message}]`;
@@ -427,8 +434,7 @@ class GitManager {
 
     async getRecentCommits(git, limit = 10) {
         try {
-            // Use array format for simple-git options
-            const log = await git.log([`-n ${limit}`, '--oneline']);
+            const log = await git.log({ maxCount: limit });
 
             return log.all.map(commit => ({
                 hash: commit.hash,
