@@ -63,11 +63,6 @@ class SmartCommit {
         // Create centralized command context
         const context = new CommandContext(options, args);
 
-        // Set model override if provided
-        if (context.getFlag('model')) {
-            this.aiManager.setModel(context.getFlag('model'));
-        }
-
         // Handle clean command
         if (context.hasFlag('clean')) {
             await this.cleanData();
@@ -90,6 +85,7 @@ class SmartCommit {
 
         // Initialize context with runtime state
         await context.initialize(this.configManager, this.gitManager, this.historyManager);
+        this.applyContextToAIManager(context);
 
         if (context.hasFlag('grouped')) {
             await this.processGroupedCommit(context);
@@ -323,8 +319,8 @@ class SmartCommit {
                 // Perform interactive staging
                 stagedFiles = await this.gitManager.stageInteractively(context.git, selectedFiles);
                 
-                // Get updated diff data after interactive staging
-                const updatedDiffData = await this.gitManager.getGitDiff(context.git, context.getRadius());
+                // Get updated diff data after interactive staging, filtered to staged files only
+                const updatedDiffData = await this.gitManager.getGitDiff(context.git, context.getRadius(), stagedFiles);
                 if (!updatedDiffData || updatedDiffData.files.length === 0) {
                     console.log('✨ No changes were staged. Operation cancelled.');
                     process.exit(0);
@@ -394,6 +390,11 @@ class SmartCommit {
                         commitData.selectedFiles = selectedFiles;
                     }
 
+                    if (context.getSelectiveContext()) {
+                        commitData.selectiveMode = true;
+                        this.validateSelectiveCommit(commitData, diffData);
+                    }
+
                     let confirmed;
                     if (context.hasFlag('auto')) {
                         // Auto-accept the generated commit
@@ -432,11 +433,6 @@ class SmartCommit {
 
     async executeCommit(git, commitData, repoName, history, generationFile) {
         try {
-            // Update generation status to accepted (like original)
-            if (generationFile) {
-                this.historyManager.updateGenerationStatus(generationFile, true);
-            }
-
             // Stage changes before committing (selective or all)
             // Skip staging if interactive mode or files mode was used (files already staged)
             if (commitData.interactiveStaged) {
@@ -450,6 +446,13 @@ class SmartCommit {
                 await this.gitManager.stageSelectedFiles(git, commitData.files);
             } else if (commitData.isGrouped) {
                 throw new Error('Grouped commit has no files specified — refusing to stage all changes');
+            } else if (commitData.selectiveMode) {
+                if (!commitData.selectedFiles || commitData.selectedFiles.length === 0) {
+                    throw new Error('Selective commit mode requires AI to specify selectedFiles — refusing to stage all changes');
+                }
+                console.log(`🔍 Selective commit: staging ${commitData.selectedFiles.length} file(s):`);
+                commitData.selectedFiles.forEach(file => console.log(`   📄 ${file}`));
+                await this.gitManager.stageSelectedFiles(git, commitData.selectedFiles);
             } else if (commitData.selectedFiles && commitData.selectedFiles.length > 0) {
                 console.log(`🔍 Selective commit: staging ${commitData.selectedFiles.length} file(s):`);
                 commitData.selectedFiles.forEach(file => console.log(`   📄 ${file}`));
@@ -462,6 +465,16 @@ class SmartCommit {
             // Commit and push
             await this.gitManager.commitAndPush(git, commitData.summary, commitData.description);
 
+            // Mark generation as accepted only after successful commit
+            if (generationFile) {
+                this.historyManager.updateGenerationStatus(generationFile, true);
+            }
+
+            const committedFiles = commitData.files
+                || commitData.selectedFiles
+                || commitData.stagedFiles
+                || [];
+
             // Save to history (like original with file paths and history limit)
             const commitRecord = {
                 timestamp: new Date().toISOString(),
@@ -471,7 +484,7 @@ class SmartCommit {
                 scope: commitData.scope,
                 breaking: commitData.breaking,
                 issues: commitData.issues,
-                files: [] // Will be populated by git diff files
+                files: committedFiles
             };
 
             history.push(commitRecord);
@@ -483,8 +496,31 @@ class SmartCommit {
             this.historyManager.saveHistory(repoName, history);
             console.log('\n🎉 All done! Your changes have been committed and pushed.');
         } catch (error) {
+            if (generationFile) {
+                this.historyManager.updateGenerationStatus(generationFile, false);
+            }
             this.logger.error('Failed to execute commit:', error);
             throw error;
+        }
+    }
+
+    applyContextToAIManager(context) {
+        this.aiManager.setModel(context.getModel());
+        if (context.config?.maxRetries) {
+            this.aiManager.setMaxRetries(context.config.maxRetries);
+        }
+    }
+
+    validateSelectiveCommit(commitData, diffData) {
+        const changedFilePaths = diffData.files.map(file => file.path);
+
+        if (!commitData.selectedFiles || commitData.selectedFiles.length === 0) {
+            throw new Error('Selective commit mode requires AI to specify selectedFiles');
+        }
+
+        const invalidFiles = commitData.selectedFiles.filter(file => !changedFilePaths.includes(file));
+        if (invalidFiles.length > 0) {
+            throw new Error(`AI selected files not in changed files: ${invalidFiles.join(', ')}`);
         }
     }
 
@@ -509,6 +545,7 @@ class SmartCommit {
             if (!context.config) {
                 await context.initialize(this.configManager, this.gitManager, this.historyManager);
             }
+            this.applyContextToAIManager(context);
 
             console.log('🔍 Testing OpenRouter API connection...');
             console.log(`🤖 Model: ${context.getModel()}`);
