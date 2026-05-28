@@ -8,6 +8,7 @@ class CommandContext {
         this.flags = {
             clean: options.clean || false,
             test: options.test || false,
+            setModel: options.setModel || null,
             model: options.model || null,
             additional: options.additional || null,
             radius: options.radius || 10,

@@ -34,6 +34,7 @@ class SmartCommit {
             .helpOption('-h, --help', 'Show this help message')
             .option('--clean', 'Clean all data and reset configuration')
             .option('--test', 'Test API connection with a simple hello message')
+            .option('--set-model <model>', 'Save the default AI model for future runs')
             .option('--model <model>', 'Override the configured AI model for this run')
             .option('--additional <instruction>', 'Provide additional instruction to help AI generate more accurate commit messages')
             .option('--radius <number>', 'Set context radius (default: 10 lines around changes)', (value) => {
@@ -72,6 +73,12 @@ class SmartCommit {
         // Handle test command
         if (context.hasFlag('test')) {
             await this.testApiConnection(context);
+            return;
+        }
+
+        // Handle set-model command
+        if (context.getFlag('setModel')) {
+            await this.setDefaultModel(context);
             return;
         }
 
@@ -537,6 +544,20 @@ class SmartCommit {
         }
     }
 
+    async setDefaultModel(context) {
+        const model = context.getFlag('setModel')?.trim();
+        if (!model) {
+            console.error('❌ Error: --set-model requires a model name');
+            process.exit(1);
+        }
+
+        await this.configManager.loadConfig();
+        this.configManager.updateConfig({ model });
+
+        console.log(`✅ Default model saved: ${model}`);
+        console.log('💡 Use --model to override for a single run');
+    }
+
     async testApiConnection(context) {
         try {
             console.log('🧪 SmartCommit API Test\n');
@@ -578,6 +599,7 @@ EXAMPLES:
   smartc .                                # Commit changes in current directory
   smartc /path/to/repo                    # Commit changes in specific repository
   smartc --test                           # Test API connection with hello message
+  smartc --set-model x-ai/grok-2-flash:free  # Save default model for future runs
   smartc --model anthropic/claude-3.5-sonnet  # Use Claude for this commit
   smartc --model openai/gpt-4o            # Use GPT-4o for this commit
   smartc --additional "Fixed bug #123"    # Include extra instruction for AI
@@ -600,6 +622,7 @@ FEATURES:
   🤖 Multiple AI models supported (Grok, Claude, GPT-4, Gemini, etc.)
   🆓 Free tier available with X.AI Grok models
   🧪 API connection testing with --test flag
+  💾 Save default model with --set-model flag
   🔄 Model override with --model flag for per-run customization
   📝 Conventional commit format (feat, fix, docs, etc.)
   🔄 Interactive confirmation with regeneration option
