@@ -49,3 +49,8 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Bun compiled executables (built in CI / prepare)
+dist/
+bin/smartc
+bin/smartc.exe

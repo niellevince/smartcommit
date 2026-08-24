@@ -3,7 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 
+const { getDataDir, getLegacyDataDirs } = require('../src/utils/paths');
 const dataDir = path.join(__dirname, '../data');
+const userDataDir = getDataDir();
 const nodeModulesDir = path.join(__dirname, '../node_modules');
 
 function cleanDirectory(dir, keepFiles = []) {
@@ -46,10 +48,19 @@ function cleanDirectory(dir, keepFiles = []) {
 function main() {
     console.log('🧹 Cleaning SmartCommit project...\n');
 
-    // Clean data directory but keep config.example.json
+    // Clean repo data directory but keep config.example.json
     if (fs.existsSync(dataDir)) {
-        console.log('📂 Cleaning data directory...');
+        console.log('📂 Cleaning repo data directory...');
         cleanDirectory(dataDir, ['config.example.json']);
+    }
+
+    for (const legacyDir of getLegacyDataDirs()) {
+        if (legacyDir === dataDir || legacyDir === userDataDir || !fs.existsSync(legacyDir)) {
+            continue;
+        }
+
+        console.log(`📂 Cleaning legacy data directory: ${legacyDir}`);
+        cleanDirectory(legacyDir, ['config.example.json']);
     }
 
     // Clean package-lock and node_modules for fresh install

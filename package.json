@@ -4,10 +4,23 @@
   "description": "AI-powered git commit message generator using OpenRouter API with multiple AI models (Claude, GPT-4, Gemini, Llama)",
   "main": "src/index.js",
   "bin": {
-    "smartc": "./src/cli.js"
+    "smartc": "./bin/smartc.exe"
   },
+  "files": [
+    "bin/",
+    "dist/",
+    "src/",
+    "package.json",
+    "README.md"
+  ],
   "scripts": {
     "start": "node src/cli.js",
+    "build": "node scripts/build-all.js",
+    "build:local": "node scripts/build-local-if-needed.js && node scripts/install-platform-bin.js",
+    "prepare": "node scripts/build-local-if-needed.js && node scripts/install-platform-bin.js",
+    "preinstall": "node scripts/install-platform-bin.js --skip-if-missing",
+    "postinstall": "node scripts/install-platform-bin.js --skip-if-missing",
+    "prepublishOnly": "node scripts/build-all.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "echo \"No linter configured yet\"",
     "clean": "node scripts/clean.js"

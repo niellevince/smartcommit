@@ -1,4 +1,3 @@
-const path = require('path');
 const { Command } = require('commander');
 const { ConfigManager } = require('../utils/ConfigManager');
 const { GitManager } = require('../utils/GitManager');
@@ -7,10 +6,11 @@ const { HistoryManager } = require('../utils/HistoryManager');
 const { CLIInterface } = require('../utils/CLIInterface');
 const { Logger } = require('../utils/Logger');
 const { CommandContext } = require('../utils/CommandContext');
+const { resolveDataDir } = require('../utils/paths');
 
 class SmartCommit {
     constructor(options = {}) {
-        this.dataDir = path.join(__dirname, '../../data');
+        this.dataDir = resolveDataDir();
         this.configManager = new ConfigManager(this.dataDir);
         this.historyManager = new HistoryManager(this.dataDir);
         this.gitManager = new GitManager();
@@ -652,8 +652,16 @@ For more information, visit: https://github.com/niellevince/smartcommit
     }
 
     getVersion() {
-        const packageJson = require('../../package.json');
-        return packageJson.version;
+        if (typeof SMARTCOMMIT_VERSION !== 'undefined') {
+            return SMARTCOMMIT_VERSION;
+        }
+
+        try {
+            const packageJson = require('../../package.json');
+            return packageJson.version;
+        } catch {
+            return '0.0.0';
+        }
     }
 }
 

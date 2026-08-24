@@ -17,32 +17,70 @@ AI-powered git commit message generator using OpenRouter API. Generate professio
 -   **Global Installation**: Use `smartc` command anywhere in your system
 -   **Auto-staging**: Automatically stages all changes before committing
 -   **Smart Push**: Handles upstream branch setup automatically
--   **Generation Tracking**: Saves every AI generation to `data/generations` with timestamps
+-   **Generation Tracking**: Saves every AI generation to user config with timestamps
 -   **Complete Generation History**: All AI generations are preserved, whether accepted or rejected
 
 ## Installation 📦
 
+SmartCommit ships as a **compiled native binary** (built with [Bun](https://bun.sh)). Running `smartc` invokes the executable directly — no Node.js at runtime.
+
+### Prerequisites (from source)
+
+- [Bun](https://bun.sh) — required to build the binary when installing from a git clone
+- [Node.js](https://nodejs.org) — used only during `npm install` build scripts
+
+Installing from the **npm registry** includes pre-built binaries — Bun is not required.
+
 ### Option 1: Global Installation (Recommended)
 
 ```bash
-# Clone and install dependencies first
 git clone https://github.com/niellevince/smartcommit
 cd smartcommit
-npm install
+npm install          # builds bin/smartc (requires Bun)
+npm install -g .     # links global smartc command
 
-# Then install globally
-npm install -g .
-
-# Now you can use 'smartc' anywhere
-smartc
+smartc               # runs compiled binary directly
 ```
 
-### Option 2: Local Usage
+### Option 2: Local PATH (no global install)
 
 ```bash
 git clone https://github.com/niellevince/smartcommit
 cd smartcommit
-npm install
+npm install          # or: npm run build:local
+```
+
+Add the project's `bin/` folder to your PATH:
+
+**Windows (PowerShell, persistent):**
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  $env:Path + ";D:\path\to\smartcommit\bin",
+  "User"
+)
+```
+
+**macOS / Linux:**
+
+```bash
+echo 'export PATH="/path/to/smartcommit/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Or run directly without PATH:
+
+```bash
+.\bin\smartc.exe --help        # Windows
+./bin/smartc --help            # Unix (also available: ./bin/smartc.exe)
+```
+
+### Option 3: Development (Node.js)
+
+For active development without rebuilding the binary:
+
+```bash
 node src/cli.js
 ```
 
@@ -54,7 +92,7 @@ On first run, SmartCommit will prompt you for your OpenRouter API key:
 2. Run `smartc` in any git repository
 3. Enter your API key when prompted
 4. Select your preferred AI model (Gemini Lite recommended)
-5. Your configuration will be securely saved in `data/config.json`
+5. Your configuration will be securely saved in your user config directory (see [Configuration](#configuration-))
 
 ### Supported AI Models 🤖
 
@@ -183,7 +221,7 @@ Lines 45-55:
 
 ### Generation Tracking 📊
 
-Every AI generation is automatically saved to `data/generations/` with timestamps in the format `yyyy-mm-dd-hh-mm-ss.json`. These files contain:
+Every AI generation is automatically saved to your user config `generations/` folder with timestamps in the format `yyyy-mm-dd-hh-mm-ss.json`. These files contain:
 
 -   **Raw AI response** and **parsed commit message**
 -   **Original prompt** and **diff summary**
@@ -225,8 +263,16 @@ Closes #42
 
 ### Config File Location
 
--   `data/config.json` - Stores your OpenRouter API key and model preferences
--   `data/<repo-name>.json` - Stores commit history for each repository
+User data is stored outside the package directory:
+
+- **Windows:** `%APPDATA%\smartcommit\`
+- **macOS / Linux:** `~/.smartcommit/`
+
+Files:
+
+-   `config.json` — OpenRouter API key and model preferences
+-   `<repo-name>.json` — commit history per repository
+-   `generations/` — AI generation logs
 
 ### History Tracking
 
@@ -294,7 +340,7 @@ Closes #127
 **"Invalid OpenRouter API key" error**
 
 -   Verify your API key at OpenRouter dashboard
--   Delete `data/config.json` and run setup again
+-   Delete `config.json` from your user config directory and run setup again
 
 **"No changes detected"**
 
@@ -309,11 +355,14 @@ Closes #127
 ### Manual Config Reset
 
 ```bash
-# Remove config file to reset API key
-rm data/config.json
+# Remove config file to reset API key (macOS/Linux)
+rm ~/.smartcommit/config.json
+
+# Windows
+del %APPDATA%\smartcommit\config.json
 
 # Remove history for specific repo
-rm data/<repo-name>.json
+rm ~/.smartcommit/<repo-name>.json
 ```
 
 ## Development 👨‍💻
@@ -322,12 +371,15 @@ rm data/<repo-name>.json
 
 ```
 smartcommit/
-├── src/                          # Source code directory
-│   ├── cli.js                   # Main CLI entry point
+├── bin/                         # Compiled smartc binary (generated, gitignored)
+├── dist/                        # Platform-specific build outputs (generated)
+├── src/                         # Source code directory
+│   ├── cli.js                   # CLI entry point (dev / Bun compile input)
 │   ├── core/                    # Core business logic
 │   │   └── SmartCommit.js       # Main orchestrator class
 │   ├── utils/                   # Utility modules
-│   │   ├── CommandContext.js    # Centralized CLI configuration (NEW)
+│   │   ├── paths.js             # User config directory resolution
+│   │   ├── CommandContext.js    # Centralized CLI configuration
 │   │   ├── ConfigManager.js     # Configuration management
 │   │   ├── GitManager.js        # Git operations
 │   │   ├── AIManager.js         # AI/Gemini integration
@@ -336,14 +388,12 @@ smartcommit/
 │   │   └── Logger.js            # Logging utility
 │   └── constants/               # Application constants
 │       └── index.js             # Constants and configuration
-├── package.json                # Project metadata and dependencies
-├── data/                       # Config and history storage
-│   ├── config.json             # API key storage (gitignored)
-│   ├── generations/            # AI generation history
-│   └── *.json                  # Repository-specific history files
-├── COMMAND_CONTEXT_IMPLEMENTATION.md  # Implementation documentation (NEW)
-└── README.md                   # This file
+├── scripts/                     # Build and install scripts
+├── package.json                 # Project metadata and dependencies
+└── README.md                    # This file
 ```
+
+User config (not in repo): `%APPDATA%\smartcommit\` (Windows) or `~/.smartcommit/` (macOS/Linux)
 
 ### Contributing
 
