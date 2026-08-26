@@ -1,8 +1,9 @@
-const axios = require('axios');
 const { Logger } = require('./Logger');
 const { GROUPED_COMMITS_PROMPT } = require('../prompts/groupedCommits');
 const { buildCommitMessageInstructions } = require('../prompts/commitMessage');
 const { PULL_REQUEST_PROMPT } = require('../prompts/pullRequest');
+
+const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 class AIManager {
     constructor() {
@@ -29,6 +30,34 @@ class AIManager {
         return content;
     }
 
+    async postChatCompletion(apiKey, payload) {
+        const response = await fetch(OPENROUTER_CHAT_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
+                'X-Title': 'SmartCommit',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            throw new Error(`API response was not valid JSON (HTTP ${response.status})`);
+        }
+
+        if (!response.ok) {
+            const error = new Error(data?.error?.message || `OpenRouter request failed (HTTP ${response.status})`);
+            error.response = { data };
+            throw error;
+        }
+
+        return { data };
+    }
+
     async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null, selectiveContext = null) {
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
@@ -37,29 +66,17 @@ class AIManager {
                 const request = this.buildStructuredRequest(diffData, history, repoName, additionalContext, selectiveContext);
                 const startTime = Date.now();
 
-                // OpenRouter API call
-                const response = await axios.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
-                    {
-                        model: this.model || 'google/gemini-2.5-flash-lite',
-                        messages: [
-                            {
-                                role: 'user',
-                                content: request
-                            }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 2000
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
-                            'X-Title': 'SmartCommit',
-                            'Content-Type': 'application/json'
+                const response = await this.postChatCompletion(apiKey, {
+                    model: this.model || 'google/gemini-2.5-flash-lite',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: request
                         }
-                    }
-                );
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2000
+                });
 
                 const generationTime = Date.now() - startTime;
                 const text = this.extractResponseContent(response);
@@ -114,29 +131,17 @@ class AIManager {
                 const request = this.buildGroupedRequest(diffData, repoName, additionalContext, history);
                 const startTime = Date.now();
 
-                // OpenRouter API call
-                const response = await axios.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
-                    {
-                        model: this.model || 'google/gemini-2.5-flash-lite',
-                        messages: [
-                            {
-                                role: 'user',
-                                content: request
-                            }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 3000
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
-                            'X-Title': 'SmartCommit',
-                            'Content-Type': 'application/json'
+                const response = await this.postChatCompletion(apiKey, {
+                    model: this.model || 'google/gemini-2.5-flash-lite',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: request
                         }
-                    }
-                );
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 3000
+                });
 
                 const generationTime = Date.now() - startTime;
                 const text = this.extractResponseContent(response);
@@ -486,29 +491,17 @@ class AIManager {
         const startTime = Date.now();
 
         try {
-            // OpenRouter API call with simple hello message
-            const response = await axios.post(
-                'https://openrouter.ai/api/v1/chat/completions',
-                {
-                    model: this.model || 'google/gemini-2.5-flash-lite',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: 'Hello! Please respond with just "Hello from [your model name]!" and nothing else.'
-                        }
-                    ],
-                    temperature: 0.1,
-                    max_tokens: 50
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
-                        'X-Title': 'SmartCommit',
-                        'Content-Type': 'application/json'
+            const response = await this.postChatCompletion(apiKey, {
+                model: this.model || 'google/gemini-2.5-flash-lite',
+                messages: [
+                    {
+                        role: 'user',
+                        content: 'Hello! Please respond with just "Hello from [your model name]!" and nothing else.'
                     }
-                }
-            );
+                ],
+                temperature: 0.1,
+                max_tokens: 50
+            });
 
             const responseTime = Date.now() - startTime;
             const aiResponse = this.extractResponseContent(response).trim();
@@ -532,29 +525,17 @@ class AIManager {
                 const request = this.buildPullRequestRequest(selectedCommits, repoName, additionalContext);
                 const startTime = Date.now();
 
-                // OpenRouter API call
-                const response = await axios.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
-                    {
-                        model: this.model || 'google/gemini-2.5-flash-lite',
-                        messages: [
-                            {
-                                role: 'user',
-                                content: request
-                            }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 2500
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${apiKey}`,
-                            'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
-                            'X-Title': 'SmartCommit',
-                            'Content-Type': 'application/json'
+                const response = await this.postChatCompletion(apiKey, {
+                    model: this.model || 'google/gemini-2.5-flash-lite',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: request
                         }
-                    }
-                );
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2500
+                });
 
                 const generationTime = Date.now() - startTime;
                 const text = this.extractResponseContent(response);
