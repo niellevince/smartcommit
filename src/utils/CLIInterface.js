@@ -7,8 +7,8 @@ class CLIInterface {
         this.logger = new Logger();
     }
 
-    async confirmCommit(commitData) {
-        const { summary, description, type, scope, breaking, issues, changes, generationTime } = commitData;
+    displayCommit(commitData) {
+        const { summary, description, type, scope, breaking, issues, generationTime } = commitData;
 
         console.log('📝 Generated Commit Message:\n');
         console.log(`Summary: ${summary}`);
@@ -16,12 +16,6 @@ class CLIInterface {
         if (generationTime) {
             console.log(`⏱️  Generation Time: ${generationTime}ms`);
         }
-
-        // Skip displaying changes section to avoid redundancy with description
-        // if (changes && changes.length > 0) {
-        //     console.log(`\nChanges:`);
-        //     changes.forEach(change => console.log(`  - ${change}`));
-        // }
 
         if (description) {
             console.log(`\nDescription:\n${description}`);
@@ -32,6 +26,28 @@ class CLIInterface {
         }
 
         console.log(); // Empty line
+    }
+
+    displayGroupedCommit(commitData) {
+        const { summary, description, files } = commitData;
+
+        console.log('\n🤖 Proposed Commit:\n');
+        console.log(`Summary: ${summary}`);
+
+        if (description) {
+            console.log(`\nDescription:\n${description}`);
+        }
+
+        if (files && files.length > 0) {
+            console.log(`\nFiles to be included in this commit:`);
+            files.forEach(file => console.log(`  - ${file}`));
+        }
+
+        console.log(); // Empty line
+    }
+
+    async confirmCommit(commitData) {
+        this.displayCommit(commitData);
 
         const { action } = await inquirer.prompt([
             {
@@ -51,21 +67,7 @@ class CLIInterface {
     }
 
     async confirmGroupedCommit(commitData) {
-        const { summary, description, files } = commitData;
-
-        console.log('\n🤖 Proposed Commit:\n');
-        console.log(`Summary: ${summary}`);
-
-        if (description) {
-            console.log(`\nDescription:\n${description}`);
-        }
-
-        if (files && files.length > 0) {
-            console.log(`\nFiles to be included in this commit:`);
-            files.forEach(file => console.log(`  - ${file}`));
-        }
-
-        console.log(); // Empty line
+        this.displayGroupedCommit(commitData);
 
         const { action } = await inquirer.prompt([
             {

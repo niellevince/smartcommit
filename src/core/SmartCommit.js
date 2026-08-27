@@ -218,6 +218,7 @@ class SmartCommit {
             for (const commit of groupedCommits) {
                 let action;
                 if (context.hasFlag('auto')) {
+                    this.cli.displayGroupedCommit(commit);
                     console.log('🤖 Auto mode: Automatically accepting grouped commit...');
                     action = 'accept';
                 } else {
@@ -252,6 +253,7 @@ class SmartCommit {
                 for (const commit of skippedCommits) {
                     let action;
                     if (context.hasFlag('auto')) {
+                        this.cli.displayGroupedCommit(commit);
                         console.log('🤖 Auto mode: Automatically accepting skipped grouped commit...');
                         action = 'accept';
                     } else {
@@ -404,7 +406,7 @@ class SmartCommit {
 
                     let confirmed;
                     if (context.hasFlag('auto')) {
-                        // Auto-accept the generated commit
+                        this.cli.displayCommit(commitData);
                         console.log('🤖 Auto mode: Automatically accepting generated commit...');
                         confirmed = { action: 'accept' };
                     } else {
