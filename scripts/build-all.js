@@ -44,7 +44,7 @@ function main() {
         );
     }
 
-    execSync('node scripts/install-platform-bin.js', { stdio: 'inherit', cwd: rootDir });
+    execSync('bun scripts/install-platform-bin.js', { stdio: 'inherit', cwd: rootDir });
 
     console.log('All platform binaries built in dist/.');
 }

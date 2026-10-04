@@ -27,7 +27,8 @@ SmartCommit v2.0 introduces a major upgrade by migrating from Google Gemini API 
 ```bash
 cd smartcommit
 git pull origin main  # or your branch
-npm install
+bun install
+bun link
 ```
 
 #### Step 2: Get OpenRouter API Key
@@ -139,7 +140,7 @@ If you encounter issues:
 ```bash
 # Rollback to v1.3.1
 git checkout v1.3.1
-npm install
+bun install
 
 # Restore old config
 # Edit data/config.json with your Gemini key
@@ -159,8 +160,11 @@ npm install
 ## Quick Start (New Users)
 
 ```bash
-# Install
-npm install -g smartcommit
+# Install from source
+git clone https://github.com/niellevince/smartcommit
+cd smartcommit
+bun install
+bun link
 
 # Setup (first run)
 smartc

@@ -54,3 +54,5 @@ temp/
 dist/
 bin/smartc
 bin/smartc.exe
+# npm lockfile (Bun-only project)
+package-lock.json

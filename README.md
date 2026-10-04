@@ -22,66 +22,28 @@ AI-powered git commit message generator using OpenRouter API. Generate professio
 
 ## Installation 📦
 
-SmartCommit ships as a **compiled native binary** (built with [Bun](https://bun.sh)). Running `smartc` invokes the executable directly — no Node.js at runtime.
+SmartCommit runs with [Bun](https://bun.sh). `bun link` exposes the `smartc` command, which executes `src/cli.js` via Bun.
 
-### Prerequisites (from source)
+### Prerequisites
 
-- [Bun](https://bun.sh) — required to build the binary when installing from a git clone
-- [Node.js](https://nodejs.org) — used only during `npm install` build scripts
+- [Bun](https://bun.sh) — required for install, run, and `bun link`
 
-Installing from the **npm registry** includes pre-built binaries — Bun is not required.
-
-### Option 1: Global Installation (Recommended)
+### Global Installation (Recommended)
 
 ```bash
 git clone https://github.com/niellevince/smartcommit
 cd smartcommit
-npm install          # builds bin/smartc (requires Bun)
-npm install -g .     # links global smartc command
+bun install
+bun link
 
-smartc               # runs compiled binary directly
+smartc
 ```
 
-### Option 2: Local PATH (no global install)
+### Development
 
 ```bash
-git clone https://github.com/niellevince/smartcommit
-cd smartcommit
-npm install          # or: npm run build:local
-```
-
-Add the project's `bin/` folder to your PATH:
-
-**Windows (PowerShell, persistent):**
-
-```powershell
-[Environment]::SetEnvironmentVariable(
-  "Path",
-  $env:Path + ";D:\path\to\smartcommit\bin",
-  "User"
-)
-```
-
-**macOS / Linux:**
-
-```bash
-echo 'export PATH="/path/to/smartcommit/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-Or run directly without PATH:
-
-```bash
-.\bin\smartc.exe --help        # Windows
-./bin/smartc --help            # Unix (also available: ./bin/smartc.exe)
-```
-
-### Option 3: Development (Node.js)
-
-For active development without rebuilding the binary:
-
-```bash
-node src/cli.js
+bun src/cli.js
+# or: bun run start
 ```
 
 ## Setup 🔧
@@ -371,10 +333,9 @@ rm ~/.smartcommit/<repo-name>.json
 
 ```
 smartcommit/
-├── bin/                         # Compiled smartc binary (generated, gitignored)
-├── dist/                        # Platform-specific build outputs (generated)
+├── dist/                        # Optional platform build outputs (generated)
 ├── src/                         # Source code directory
-│   ├── cli.js                   # CLI entry point (dev / Bun compile input)
+│   ├── cli.js                   # CLI entry point (bun link target)
 │   ├── core/                    # Core business logic
 │   │   └── SmartCommit.js       # Main orchestrator class
 │   ├── utils/                   # Utility modules

@@ -49,7 +49,7 @@ function main() {
 
     if (!hasBun()) {
         console.error('[smartcommit] Bun is required to build smartc. Install from https://bun.sh');
-        console.error('[smartcommit] Then run: npm run build:local');
+        console.error('[smartcommit] Then run: bun run build:local');
         process.exit(1);
     }
 

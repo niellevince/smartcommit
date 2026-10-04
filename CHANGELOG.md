@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-10-05
+
+### 🔄 Changed
+
+- **Bun-only install**: Dependencies and global CLI linking now use Bun (`bun install` + `bun link`) instead of npm
+- **CLI entry**: `smartc` runs `src/cli.js` via Bun; no longer linked to a compiled `bin/smartc.exe`
+- **Scripts**: Build/start/clean scripts invoke Bun; removed npm lifecycle hooks (`preinstall`, `postinstall`, `prepublishOnly`) and npm publish from CI
+
+### 📝 Documentation
+
+- Updated README and migration guide for Bun install/link workflow
+
 ## [2.6.3] - 2026-08-27
 
 ### 🐛 Fixed

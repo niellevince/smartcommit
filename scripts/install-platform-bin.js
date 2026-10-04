@@ -43,14 +43,14 @@ function main() {
 
     const sourcePath = path.join(rootDir, sourceRel);
     if (!fs.existsSync(sourcePath)) {
-        const message = `Binary not found: ${sourceRel}. Run "npm run build:local" (requires Bun from https://bun.sh).`;
+        const message = `Binary not found: ${sourceRel}. Run "bun run build:local" (requires Bun from https://bun.sh).`;
         if (skipIfMissing) {
             return;
         }
         fail(message);
     }
 
-    // .exe extension is required on Windows so the OS and npm recognize it as an executable
+    // .exe extension is required on Windows so the OS and bun link recognize it as an executable
     installBinary(sourcePath, binExePath);
 
     // Unix-friendly name for PATH usage (same binary, optional on all platforms)

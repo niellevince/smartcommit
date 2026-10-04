@@ -63,11 +63,11 @@ function main() {
         cleanDirectory(legacyDir, ['config.example.json']);
     }
 
-    // Clean package-lock and node_modules for fresh install
-    const packageLock = path.join(__dirname, '../package-lock.json');
-    if (fs.existsSync(packageLock)) {
-        fs.unlinkSync(packageLock);
-        console.log('🗑️  Removed package-lock.json');
+    // Clean bun.lock and node_modules for fresh install
+    const bunLock = path.join(__dirname, '../bun.lock');
+    if (fs.existsSync(bunLock)) {
+        fs.unlinkSync(bunLock);
+        console.log('🗑️  Removed bun.lock');
     }
 
     if (fs.existsSync(nodeModulesDir)) {
@@ -82,7 +82,7 @@ function main() {
     }
 
     console.log('\n✅ Project cleaned successfully!');
-    console.log('💡 Run "npm install" to reinstall dependencies');
+    console.log('💡 Run "bun install" to reinstall dependencies');
 }
 
 if (require.main === module) {
