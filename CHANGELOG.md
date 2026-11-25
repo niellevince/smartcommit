@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-11-25
+
+### 🔄 Changed
+
+- **Provider**: Commit generation now uses the Kilo AI Gateway at `https://ai-gateway.kilo.ai/api/v1/chat/completions`
+- **Configuration key**: New installs save `KILO_API_KEY`. An existing OpenRouter key is left in `config.json` and is not sent to Kilo. The CLI prompts for a Kilo key and keeps the saved model
+- **Model presets**: Claude Sonnet 4.5 replaces Claude 3.5 Sonnet. Llama 3.3 70B is no longer a preset because it is not on Kilo
+- **API test**: `--test` no longer prints a credit balance. Kilo does not expose remaining credits on this API. HTTP 402 responses include Kilo's buy-credits link
+
 ## [2.7.1] - 2026-11-25
 
 ### 🐛 Fixed

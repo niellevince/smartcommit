@@ -1,10 +1,10 @@
 # SmartCommit 🚀
 
-AI-powered git commit message generator using OpenRouter API. Generate professional, contextual commit messages automatically using multiple AI models including Claude, GPT-4, Gemini, and more.
+AI-powered git commit message generator using the Kilo AI Gateway. Generate professional, contextual commit messages automatically using multiple AI models including Claude, GPT-4, Gemini, and more.
 
 ## Features ✨
 
--   **Multiple AI Models**: Choose from Claude, GPT-4, Gemini, Llama, and more via OpenRouter
+-   **Multiple AI Models**: Choose from Claude, GPT-4, Gemini, Qwen, and more via the Kilo AI Gateway
 -   **AI-Generated Commits**: Analyze your changes and create meaningful commit messages
 -   **Smart Context Radius**: Only sends relevant code lines to AI (90% faster, 90% cost reduction)
 -   **Conventional Commits**: Follows conventional commit format with proper types and scopes
@@ -48,9 +48,9 @@ bun src/cli.js
 
 ## Setup 🔧
 
-On first run, SmartCommit will prompt you for your OpenRouter API key:
+On first run, SmartCommit will prompt you for your Kilo API key:
 
-1. Get your API key from [OpenRouter](https://openrouter.ai/keys)
+1. Get your API key from the [Kilo account dashboard](https://app.kilo.ai/credits)
 2. Run `smartc` in any git repository
 3. Enter your API key when prompted
 4. Select your preferred AI model (Gemini Lite recommended)
@@ -58,16 +58,15 @@ On first run, SmartCommit will prompt you for your OpenRouter API key:
 
 ### Supported AI Models 🤖
 
-SmartCommit supports multiple AI models through OpenRouter:
+SmartCommit supports multiple AI models through the Kilo AI Gateway:
 
 - **Google Gemini 2.5 Flash Lite** - Default model, fast and cost-effective
-- **Anthropic Claude 3.5 Sonnet** - Excellent for code analysis and commit messages
+- **Anthropic Claude Sonnet 4.5** - Excellent for code analysis and commit messages
 - **OpenAI GPT-4o** - Powerful general-purpose model
 - **OpenAI GPT-4o Mini** - Fast and cost-effective
-- **Google Gemini 2.5 Flash** - Google's latest model via OpenRouter
-- **Meta Llama 3.3 70B** - Open-source model with strong performance
+- **Google Gemini 2.5 Flash** - Gemini Flash
 - **Qwen 2.5 72B** - Alibaba's advanced model
-- **Custom Models** - Any OpenRouter-supported model
+- **Custom Models** - Any Kilo-supported model
 
 ## Usage 💻
 
@@ -85,7 +84,7 @@ smartc .
 smartc --test         # Test API connection with hello message
 
 # Use different AI models for specific commits
-smartc --model anthropic/claude-3.5-sonnet  # Use Claude for complex analysis
+smartc --model anthropic/claude-sonnet-4.5  # Use Claude for complex analysis
 smartc --model openai/gpt-4o               # Use GPT-4o for this commit
 smartc --model google/gemini-2.5-flash-lite # Use Gemini Lite (default)
 
@@ -232,7 +231,7 @@ User data is stored outside the package directory:
 
 Files:
 
--   `config.json` — OpenRouter API key and model preferences
+-   `config.json` — Kilo API key and model preferences
 -   `<repo-name>.json` — commit history per repository
 -   `generations/` — AI generation logs
 
@@ -299,9 +298,9 @@ Closes #127
 -   Ensure you're in a git repository directory
 -   Run `git init` if needed
 
-**"Invalid OpenRouter API key" error**
+**"Invalid Kilo API key" error**
 
--   Verify your API key at OpenRouter dashboard
+-   Verify your API key in the Kilo account dashboard
 -   Delete `config.json` from your user config directory and run setup again
 
 **"No changes detected"**
@@ -385,4 +384,4 @@ For issues, feature requests, or questions:
 ---
 
 **Made with ❤️ and AI** - SmartCommit helps you write better commit messages effortlessly using multiple AI models!
-Enhanced with complete generation tracking and OpenRouter integration
+Enhanced with complete generation tracking and Kilo AI Gateway integration

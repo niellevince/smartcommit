@@ -147,7 +147,7 @@ class SmartCommit {
             // Generate PR description with AI
             const prData = await this.aiManager.generatePullRequestDescription(
                 selectedCommits,
-                context.config.OPENROUTER_API_KEY,
+                context.config.KILO_API_KEY,
                 context.repoName,
                 context.getAdditionalContext()
             );
@@ -196,7 +196,7 @@ class SmartCommit {
             // Generate grouped commits with additional instruction if provided (--additional flag)
             const groupedResult = await this.aiManager.generateGroupedCommits(
                 diffData,
-                context.config.OPENROUTER_API_KEY,
+                context.config.KILO_API_KEY,
                 context.repoName,
                 context.getAdditionalContext(),
                 context.history
@@ -375,7 +375,7 @@ class SmartCommit {
                     const result = await this.aiManager.generateCommitMessage(
                         diffData,
                         context.history,
-                        context.config.OPENROUTER_API_KEY,
+                        context.config.KILO_API_KEY,
                         context.repoName,
                         context.getAdditionalContext(), // Supports --additional flag (works with --files)
                         context.getSelectiveContext()
@@ -570,20 +570,11 @@ class SmartCommit {
             }
             this.applyContextToAIManager(context);
 
-            console.log('🔍 Checking OpenRouter credit balance...');
-            try {
-                const keyStatus = await this.aiManager.getKeyStatus(context.config.OPENROUTER_API_KEY);
-                console.log(this.aiManager.formatKeyStatus(keyStatus));
-            } catch (error) {
-                console.log(`⚠️  Could not read credit balance: ${error.message}`);
-            }
-            console.log();
-
-            console.log('🔍 Testing OpenRouter API connection...');
+            console.log('🔍 Testing Kilo API connection...');
             console.log(`🤖 Model: ${context.getModel()}`);
             console.log();
 
-            const testResult = await this.aiManager.testApiConnection(context.config.OPENROUTER_API_KEY);
+            const testResult = await this.aiManager.testApiConnection(context.config.KILO_API_KEY);
 
             console.log('✅ API test successful!');
             console.log(`🤖 AI Response: "${testResult.response}"`);
@@ -596,8 +587,8 @@ class SmartCommit {
             console.error(`Error: ${error.message}`);
             console.log();
             console.log('💡 Troubleshooting:');
-            console.log('   1. Check your OpenRouter API key');
-            console.log('   2. Visit: https://openrouter.ai/keys');
+            console.log('   1. Check your Kilo API key');
+            console.log('   2. Visit: https://app.kilo.ai/credits');
             console.log('   3. Try: smartc --clean (to reset config)');
             process.exit(1);
         }
@@ -610,8 +601,8 @@ EXAMPLES:
   smartc .                                # Commit changes in current directory
   smartc /path/to/repo                    # Commit changes in specific repository
   smartc --test                           # Test API connection with hello message
-  smartc --set-model x-ai/grok-2-flash:free  # Save default model for future runs
-  smartc --model anthropic/claude-3.5-sonnet  # Use Claude for this commit
+  smartc --set-model google/gemini-2.5-flash-lite  # Save default model for future runs
+  smartc --model anthropic/claude-sonnet-4.5  # Use Claude for this commit
   smartc --model openai/gpt-4o            # Use GPT-4o for this commit
   smartc --additional "Fixed bug #123"    # Include extra instruction for AI
   smartc . --additional "Refactoring"     # Combine path and instruction
@@ -629,9 +620,8 @@ EXAMPLES:
 
 FEATURES:
   ✨ AI-generated pull request descriptions from selected commits
-  ✨ AI-generated commit messages using OpenRouter API
-  🤖 Multiple AI models supported (Grok, Claude, GPT-4, Gemini, etc.)
-  🆓 Free tier available with X.AI Grok models
+  ✨ AI-generated commit messages using the Kilo AI Gateway
+  🤖 Multiple AI models supported (Claude, GPT-4, Gemini, Qwen, and more)
   🧪 API connection testing with --test flag
   💾 Save default model with --set-model flag
   🔄 Model override with --model flag for per-run customization
@@ -647,15 +637,14 @@ FEATURES:
   🎯 Smart context radius - sends only relevant code to AI
 
 SETUP:
-  On first run, you'll be prompted for your OpenRouter API key.
-  Get yours at: https://openrouter.ai/keys
+  On first run, you'll be prompted for your Kilo API key.
+  Get yours from the Kilo account dashboard: https://app.kilo.ai/credits
 
   You can choose from multiple AI models including:
-  - X.AI Grok (Free tier available)
+  - Google Gemini
   - Anthropic Claude
   - OpenAI GPT-4
-  - Google Gemini
-  - Meta Llama
+  - Qwen
   - Custom models
 
 For more information, visit: https://github.com/niellevince/smartcommit

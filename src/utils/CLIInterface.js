@@ -235,7 +235,7 @@ class CLIInterface {
             {
                 type: 'password',
                 name: 'apiKey',
-                message: 'Enter your OpenRouter API Key:',
+                message: 'Enter your Kilo API Key:',
                 validate: (input) => {
                     if (!input.trim()) {
                         return 'API Key is required!';
@@ -358,11 +358,10 @@ class CLIInterface {
                 message: 'Select AI model for commit generation:',
                 choices: [
                     { name: 'Google Gemini 2.5 Flash Lite (Recommended)', value: 'google/gemini-2.5-flash-lite' },
-                    { name: 'Anthropic Claude 3.5 Sonnet', value: 'anthropic/claude-3.5-sonnet' },
+                    { name: 'Anthropic Claude Sonnet 4.5', value: 'anthropic/claude-sonnet-4.5' },
                     { name: 'OpenAI GPT-4o', value: 'openai/gpt-4o' },
                     { name: 'OpenAI GPT-4o Mini', value: 'openai/gpt-4o-mini' },
                     { name: 'Google Gemini 2.5 Flash', value: 'google/gemini-2.5-flash' },
-                    { name: 'Meta Llama 3.3 70B', value: 'meta-llama/llama-3.3-70b' },
                     { name: 'Qwen 2.5 72B', value: 'qwen/qwen-2.5-72b-instruct' },
                     { name: 'Custom Model (Enter manually)', value: 'custom' }
                 ],
@@ -375,7 +374,7 @@ class CLIInterface {
                 {
                     type: 'input',
                     name: 'customModel',
-                    message: 'Enter custom OpenRouter model name (e.g., openai/gpt-4-turbo):',
+                    message: 'Enter custom Kilo model name (e.g., openai/gpt-4o):',
                     validate: (input) => {
                         if (!input.trim()) {
                             return 'Model name is required!';

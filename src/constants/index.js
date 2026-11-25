@@ -12,13 +12,12 @@ const COMMIT_TYPES = [
     'revert'    // Reverts a previous commit
 ];
 
-const OPENROUTER_MODELS = [
+const KILO_MODELS = [
     'google/gemini-2.5-flash-lite',   // Default - Fast and cost-effective
-    'anthropic/claude-3.5-sonnet',    // Claude Sonnet 3.5
+    'anthropic/claude-sonnet-4.5',    // Claude Sonnet 4.5
     'openai/gpt-4o',                  // GPT-4 Optimized
     'openai/gpt-4o-mini',             // GPT-4 Mini
-    'google/gemini-2.5-flash',        // Gemini via OpenRouter
-    'meta-llama/llama-3.3-70b',       // Llama 3.3
+    'google/gemini-2.5-flash',        // Gemini Flash
     'qwen/qwen-2.5-72b-instruct',     // Qwen 2.5
     'custom'                          // Allow custom model input
 ];
@@ -52,7 +51,7 @@ const STATUS_ICONS = {
 
 module.exports = {
     COMMIT_TYPES,
-    OPENROUTER_MODELS,
+    KILO_MODELS,
     DEFAULT_CONFIG,
     BINARY_EXTENSIONS,
     STATUS_ICONS

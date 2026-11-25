@@ -24,9 +24,13 @@ class ConfigManager {
 
         try {
             const config = JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
-            if (!config.OPENROUTER_API_KEY) {
-                this.logger.warn('OpenRouter API key not found in config. Setting up...');
-                return await this.setupConfig();
+            if (!config.KILO_API_KEY) {
+                if (config.OPENROUTER_API_KEY) {
+                    this.logger.warn('Kilo API key not found. The saved OpenRouter key is not used.');
+                } else {
+                    this.logger.warn('Kilo API key not found in config. Setting up...');
+                }
+                return await this.promptForKiloKey(config);
             }
             return config;
         } catch (error) {
@@ -35,14 +39,18 @@ class ConfigManager {
         }
     }
 
-    async setupConfig() {
-        this.logger.info('🚀 Welcome to SmartCommit! Let\'s set up your configuration.\n');
+    async promptForKiloKey(existingConfig = null) {
+        if (existingConfig) {
+            this.logger.info('Enter a Kilo API key to continue. Your saved model will be kept.\n');
+        } else {
+            this.logger.info('🚀 Welcome to SmartCommit! Let\'s set up your configuration.\n');
+        }
 
         const { apiKey } = await inquirer.prompt([
             {
                 type: 'password',
                 name: 'apiKey',
-                message: 'Enter your OpenRouter API Key:',
+                message: 'Enter your Kilo API Key:',
                 validate: (input) => {
                     if (!input.trim()) {
                         return 'API Key is required!';
@@ -52,11 +60,16 @@ class ConfigManager {
             }
         ]);
 
+        const trimmedKey = apiKey.trim();
+        if (existingConfig) {
+            return this.updateConfig({ KILO_API_KEY: trimmedKey });
+        }
+
         const config = {
-            OPENROUTER_API_KEY: apiKey.trim(),
+            KILO_API_KEY: trimmedKey,
             model: 'google/gemini-2.5-flash-lite',
             maxRetries: 3,
-            version: '2.0.0',
+            version: '2.8.0',
             createdAt: new Date().toISOString()
         };
 
@@ -64,6 +77,10 @@ class ConfigManager {
         this.logger.success('✅ Configuration saved successfully!\n');
 
         return config;
+    }
+
+    async setupConfig() {
+        return await this.promptForKiloKey(null);
     }
 
     updateConfig(updates) {

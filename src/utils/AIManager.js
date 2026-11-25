@@ -3,9 +3,8 @@ const { GROUPED_COMMITS_PROMPT } = require('../prompts/groupedCommits');
 const { buildCommitMessageInstructions } = require('../prompts/commitMessage');
 const { PULL_REQUEST_PROMPT } = require('../prompts/pullRequest');
 
-const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
-const RELAY_ERROR_MESSAGE = 'Request path cannot be relayed';
+const KILO_CHAT_URL = 'https://ai-gateway.kilo.ai/api/v1/chat/completions';
+const KILO_CREDITS_URL = 'https://app.kilo.ai/credits';
 
 class AIManager {
     constructor() {
@@ -47,81 +46,16 @@ class AIManager {
         return error;
     }
 
-    formatCreditAmount(value) {
-        if (value == null) {
-            return 'unlimited';
-        }
-        const amount = Number(value);
-        if (!Number.isFinite(amount)) {
-            return String(value);
-        }
-        return `$${amount.toFixed(2)}`;
-    }
-
-    async getKeyStatus(apiKey) {
-        const response = await fetch(OPENROUTER_KEY_URL, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-
-        let data;
-        try {
-            data = await response.json();
-        } catch {
-            throw this.createApiError(`API response was not valid JSON (HTTP ${response.status})`, response.status);
-        }
-
-        if (!response.ok) {
-            const apiMessage = data?.error?.message || 'OpenRouter key request failed';
-            throw this.createApiError(
-                `OpenRouter key request failed (HTTP ${response.status}): ${apiMessage}`,
-                response.status,
-                { response: { data } }
-            );
-        }
-
-        const info = data?.data || {};
-        return {
-            label: info.label || null,
-            limit: info.limit ?? null,
-            limitRemaining: info.limit_remaining ?? null,
-            usageDaily: info.usage_daily ?? null
-        };
-    }
-
-    formatKeyStatus(status) {
-        return [
-            `🔑 Key: ${status.label || 'unknown'}`,
-            `💳 Limit: ${this.formatCreditAmount(status.limit)}`,
-            `💰 Remaining: ${this.formatCreditAmount(status.limitRemaining)}`,
-            `📅 Used today: ${this.formatCreditAmount(status.usageDaily)}`
-        ].join('\n');
-    }
-
-    async describeCredits(apiKey) {
-        try {
-            const status = await this.getKeyStatus(apiKey);
-            return `Remaining credits: ${this.formatCreditAmount(status.limitRemaining)} of ${this.formatCreditAmount(status.limit)} (used today: ${this.formatCreditAmount(status.usageDaily)}).`;
-        } catch (error) {
-            return `Could not read credit balance: ${error.message}.`;
-        }
-    }
-
-    async formatHttpError(apiKey, status, data) {
-        const apiMessage = data?.error?.message || 'OpenRouter request failed';
-        let message = `OpenRouter request failed (HTTP ${status}): ${apiMessage}`;
-
-        if (status === 400 && apiMessage === RELAY_ERROR_MESSAGE) {
-            message += '. OpenRouter rejected the inference path before the model ran. This is not a low-credit error.';
-        }
+    formatHttpError(status, data) {
+        const apiMessage = data?.error?.message || 'Kilo request failed';
+        let message = `Kilo request failed (HTTP ${status}): ${apiMessage}`;
 
         if (status === 402) {
             if (!/[.!?]$/.test(message)) {
                 message += '.';
             }
-            message += ` ${await this.describeCredits(apiKey)} Add credits at https://openrouter.ai/credits`;
+            const creditsUrl = data?.error?.metadata?.buyCreditsUrl || KILO_CREDITS_URL;
+            message += ` Add credits at ${creditsUrl}`;
         }
 
         return message;
@@ -130,12 +64,10 @@ class AIManager {
     async postChatCompletion(apiKey, payload) {
         let response;
         try {
-            response = await fetch(OPENROUTER_CHAT_URL, {
+            response = await fetch(KILO_CHAT_URL, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${apiKey}`,
-                    'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
-                    'X-Title': 'SmartCommit',
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
@@ -154,7 +86,7 @@ class AIManager {
         }
 
         if (!response.ok) {
-            const message = await this.formatHttpError(apiKey, response.status, data);
+            const message = this.formatHttpError(response.status, data);
             throw this.createApiError(message, response.status, { response: { data } });
         }
 
