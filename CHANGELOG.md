@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-11-25
+
+### 🐛 Fixed
+
+- **OpenRouter errors**: HTTP 400, 401, 402, and 403 responses now fail immediately instead of retrying. The error includes the HTTP status and OpenRouter's message
+- **Inference relay 400**: "Request path cannot be relayed" is reported as an OpenRouter inference-path rejection, separate from a low-credit failure
+- **Credit balance**: `--test` prints the key label, limit, remaining credits, and daily usage. HTTP 402 responses include the remaining balance and a link to add credits
+
 ## [2.7.0] - 2026-10-05
 
 ### 🔄 Changed

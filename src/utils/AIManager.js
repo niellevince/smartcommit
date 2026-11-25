@@ -4,6 +4,8 @@ const { buildCommitMessageInstructions } = require('../prompts/commitMessage');
 const { PULL_REQUEST_PROMPT } = require('../prompts/pullRequest');
 
 const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_KEY_URL = 'https://openrouter.ai/api/v1/key';
+const RELAY_ERROR_MESSAGE = 'Request path cannot be relayed';
 
 class AIManager {
     constructor() {
@@ -30,153 +32,247 @@ class AIManager {
         return content;
     }
 
-    async postChatCompletion(apiKey, payload) {
-        const response = await fetch(OPENROUTER_CHAT_URL, {
-            method: 'POST',
+    isRetryableStatus(status) {
+        if (status == null) {
+            return true;
+        }
+        return status === 408 || status === 429 || status >= 500;
+    }
+
+    createApiError(message, status, extra = {}) {
+        const error = new Error(message);
+        error.status = status;
+        error.retryable = this.isRetryableStatus(status);
+        Object.assign(error, extra);
+        return error;
+    }
+
+    formatCreditAmount(value) {
+        if (value == null) {
+            return 'unlimited';
+        }
+        const amount = Number(value);
+        if (!Number.isFinite(amount)) {
+            return String(value);
+        }
+        return `$${amount.toFixed(2)}`;
+    }
+
+    async getKeyStatus(apiKey) {
+        const response = await fetch(OPENROUTER_KEY_URL, {
+            method: 'GET',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
-                'X-Title': 'SmartCommit',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
+                'Authorization': `Bearer ${apiKey}`
+            }
         });
 
         let data;
         try {
             data = await response.json();
         } catch {
-            throw new Error(`API response was not valid JSON (HTTP ${response.status})`);
+            throw this.createApiError(`API response was not valid JSON (HTTP ${response.status})`, response.status);
         }
 
         if (!response.ok) {
-            const error = new Error(data?.error?.message || `OpenRouter request failed (HTTP ${response.status})`);
-            error.response = { data };
-            throw error;
+            const apiMessage = data?.error?.message || 'OpenRouter key request failed';
+            throw this.createApiError(
+                `OpenRouter key request failed (HTTP ${response.status}): ${apiMessage}`,
+                response.status,
+                { response: { data } }
+            );
+        }
+
+        const info = data?.data || {};
+        return {
+            label: info.label || null,
+            limit: info.limit ?? null,
+            limitRemaining: info.limit_remaining ?? null,
+            usageDaily: info.usage_daily ?? null
+        };
+    }
+
+    formatKeyStatus(status) {
+        return [
+            `🔑 Key: ${status.label || 'unknown'}`,
+            `💳 Limit: ${this.formatCreditAmount(status.limit)}`,
+            `💰 Remaining: ${this.formatCreditAmount(status.limitRemaining)}`,
+            `📅 Used today: ${this.formatCreditAmount(status.usageDaily)}`
+        ].join('\n');
+    }
+
+    async describeCredits(apiKey) {
+        try {
+            const status = await this.getKeyStatus(apiKey);
+            return `Remaining credits: ${this.formatCreditAmount(status.limitRemaining)} of ${this.formatCreditAmount(status.limit)} (used today: ${this.formatCreditAmount(status.usageDaily)}).`;
+        } catch (error) {
+            return `Could not read credit balance: ${error.message}.`;
+        }
+    }
+
+    async formatHttpError(apiKey, status, data) {
+        const apiMessage = data?.error?.message || 'OpenRouter request failed';
+        let message = `OpenRouter request failed (HTTP ${status}): ${apiMessage}`;
+
+        if (status === 400 && apiMessage === RELAY_ERROR_MESSAGE) {
+            message += '. OpenRouter rejected the inference path before the model ran. This is not a low-credit error.';
+        }
+
+        if (status === 402) {
+            if (!/[.!?]$/.test(message)) {
+                message += '.';
+            }
+            message += ` ${await this.describeCredits(apiKey)} Add credits at https://openrouter.ai/credits`;
+        }
+
+        return message;
+    }
+
+    async postChatCompletion(apiKey, payload) {
+        let response;
+        try {
+            response = await fetch(OPENROUTER_CHAT_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': 'https://github.com/niellevince/smartcommit',
+                    'X-Title': 'SmartCommit',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+        } catch (error) {
+            const networkError = new Error(error.message);
+            networkError.retryable = true;
+            throw networkError;
+        }
+
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            throw this.createApiError(`API response was not valid JSON (HTTP ${response.status})`, response.status);
+        }
+
+        if (!response.ok) {
+            const message = await this.formatHttpError(apiKey, response.status, data);
+            throw this.createApiError(message, response.status, { response: { data } });
         }
 
         return { data };
     }
 
-    async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null, selectiveContext = null) {
+    async runWithRetries(actionLabel, failureLabel, task) {
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
-                this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating commit message...`);
-
-                const request = this.buildStructuredRequest(diffData, history, repoName, additionalContext, selectiveContext);
-                const startTime = Date.now();
-
-                const response = await this.postChatCompletion(apiKey, {
-                    model: this.model || 'google/gemini-2.5-flash-lite',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: request
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 2000
-                });
-
-                const generationTime = Date.now() - startTime;
-                const text = this.extractResponseContent(response);
-                const commitData = this.parseCommitMessage(text);
-
-                if (commitData && commitData.summary) {
-                    this.logger.success(`✅ Commit message generated successfully on attempt ${attempt} (${generationTime}ms)`);
-
-                    // Remove internal parsing flag from the returned data
-                    const { parseSuccess, ...cleanCommitData } = commitData;
-
-                    // Return both the commit data and complete generation data (like original)
-                    return {
-                        ...cleanCommitData,
-                        generationTime: generationTime,                   // Add generation time
-                        requestData: {
-                            rawResponse: text,                               // Full AI response
-                            parsedMessage: cleanCommitData,                 // Parsed result
-                            structuredRequest: JSON.parse(request),         // Full structured request
-                            fileCount: diffData.files.length,              // File count
-                            changedFiles: diffData.files.map(f => f.path), // Changed files list
-                            additionalContext: additionalContext,          // Additional instruction
-                            model: response.data.model,                     // Actual model used
-                            generationTime: generationTime                 // Generation time in requestData too
-                        }
-                    };
-                }
-
-                throw new Error('Generated commit message could not be parsed or was empty');
-
+                this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: ${actionLabel}`);
+                return await task(attempt);
             } catch (error) {
                 this.logger.warn(`⚠️  Attempt ${attempt} failed: ${error.message}`);
 
-                if (attempt === this.maxRetries) {
-                    throw new Error(`Failed to generate commit message after ${this.maxRetries} attempts. Last error: ${error.message}`);
+                if (error.retryable === false) {
+                    throw error;
                 }
 
-                // Wait before retrying (exponential backoff)
+                if (attempt === this.maxRetries) {
+                    throw new Error(`Failed to ${failureLabel} after ${this.maxRetries} attempts. Last error: ${error.message}`);
+                }
+
                 const delay = Math.pow(2, attempt) * 1000;
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
     }
 
+    async generateCommitMessage(diffData, history, apiKey, repoName, additionalContext = null, selectiveContext = null) {
+        return this.runWithRetries('Generating commit message...', 'generate commit message', async (attempt) => {
+            const request = this.buildStructuredRequest(diffData, history, repoName, additionalContext, selectiveContext);
+            const startTime = Date.now();
+
+            const response = await this.postChatCompletion(apiKey, {
+                model: this.model || 'google/gemini-2.5-flash-lite',
+                messages: [
+                    {
+                        role: 'user',
+                        content: request
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+            });
+
+            const generationTime = Date.now() - startTime;
+            const text = this.extractResponseContent(response);
+            const commitData = this.parseCommitMessage(text);
+
+            if (commitData && commitData.summary) {
+                this.logger.success(`✅ Commit message generated successfully on attempt ${attempt} (${generationTime}ms)`);
+
+                // Remove internal parsing flag from the returned data
+                const { parseSuccess, ...cleanCommitData } = commitData;
+
+                // Return both the commit data and complete generation data (like original)
+                return {
+                    ...cleanCommitData,
+                    generationTime: generationTime,                   // Add generation time
+                    requestData: {
+                        rawResponse: text,                               // Full AI response
+                        parsedMessage: cleanCommitData,                 // Parsed result
+                        structuredRequest: JSON.parse(request),         // Full structured request
+                        fileCount: diffData.files.length,              // File count
+                        changedFiles: diffData.files.map(f => f.path), // Changed files list
+                        additionalContext: additionalContext,          // Additional instruction
+                        model: response.data.model,                     // Actual model used
+                        generationTime: generationTime                 // Generation time in requestData too
+                    }
+                };
+            }
+
+            throw new Error('Generated commit message could not be parsed or was empty');
+        });
+    }
+
     async generateGroupedCommits(diffData, apiKey, repoName, additionalContext = null, history = []) {
         const changedFilePaths = diffData.files.map(f => f.path);
 
-        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-            try {
-                this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating grouped commits...`);
+        return this.runWithRetries('Generating grouped commits...', 'generate grouped commits', async (attempt) => {
+            const request = this.buildGroupedRequest(diffData, repoName, additionalContext, history);
+            const startTime = Date.now();
 
-                const request = this.buildGroupedRequest(diffData, repoName, additionalContext, history);
-                const startTime = Date.now();
+            const response = await this.postChatCompletion(apiKey, {
+                model: this.model || 'google/gemini-2.5-flash-lite',
+                messages: [
+                    {
+                        role: 'user',
+                        content: request
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 3000
+            });
 
-                const response = await this.postChatCompletion(apiKey, {
-                    model: this.model || 'google/gemini-2.5-flash-lite',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: request
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 3000
-                });
+            const generationTime = Date.now() - startTime;
+            const text = this.extractResponseContent(response);
+            const commits = this.parseGroupedCommits(text, changedFilePaths);
 
-                const generationTime = Date.now() - startTime;
-                const text = this.extractResponseContent(response);
-                const commits = this.parseGroupedCommits(text, changedFilePaths);
-
-                if (commits && commits.length > 0) {
-                    this.logger.success(`✅ Grouped commits generated successfully on attempt ${attempt} (${generationTime}ms)`);
-                    return {
-                        commits,
-                        requestData: {
-                            rawResponse: text,
-                            parsedCommits: commits,
-                            structuredRequest: JSON.parse(request),
-                            fileCount: diffData.files.length,
-                            changedFiles: changedFilePaths,
-                            additionalContext,
-                            model: response.data.model,
-                            generationTime
-                        }
-                    };
-                }
-
-                throw new Error('Generated grouped commits could not be parsed or were empty');
-
-            } catch (error) {
-                this.logger.warn(`⚠️  Attempt ${attempt} failed: ${error.message}`);
-
-                if (attempt === this.maxRetries) {
-                    throw new Error(`Failed to generate grouped commits after ${this.maxRetries} attempts. Last error: ${error.message}`);
-                }
-
-                const delay = Math.pow(2, attempt) * 1000;
-                await new Promise(resolve => setTimeout(resolve, delay));
+            if (commits && commits.length > 0) {
+                this.logger.success(`✅ Grouped commits generated successfully on attempt ${attempt} (${generationTime}ms)`);
+                return {
+                    commits,
+                    requestData: {
+                        rawResponse: text,
+                        parsedCommits: commits,
+                        structuredRequest: JSON.parse(request),
+                        fileCount: diffData.files.length,
+                        changedFiles: changedFilePaths,
+                        additionalContext,
+                        model: response.data.model,
+                        generationTime
+                    }
+                };
             }
-        }
+
+            throw new Error('Generated grouped commits could not be parsed or were empty');
+        });
     }
 
     buildGroupedRequest(diffData, repoName, additionalContext = null, history = []) {
@@ -513,52 +609,41 @@ class AIManager {
             };
 
         } catch (error) {
-            throw new Error(`API connection failed: ${error.response?.data?.error?.message || error.message}`);
+            const wrapped = new Error(`API connection failed: ${error.message}`);
+            wrapped.status = error.status;
+            wrapped.retryable = error.retryable;
+            throw wrapped;
         }
     }
 
     async generatePullRequestDescription(selectedCommits, apiKey, repoName, additionalContext = null) {
-        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-            try {
-                this.logger.info(`🤖 Attempt ${attempt}/${this.maxRetries}: Generating pull request description...`);
+        return this.runWithRetries('Generating pull request description...', 'generate pull request description', async (attempt) => {
+            const request = this.buildPullRequestRequest(selectedCommits, repoName, additionalContext);
+            const startTime = Date.now();
 
-                const request = this.buildPullRequestRequest(selectedCommits, repoName, additionalContext);
-                const startTime = Date.now();
+            const response = await this.postChatCompletion(apiKey, {
+                model: this.model || 'google/gemini-2.5-flash-lite',
+                messages: [
+                    {
+                        role: 'user',
+                        content: request
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 2500
+            });
 
-                const response = await this.postChatCompletion(apiKey, {
-                    model: this.model || 'google/gemini-2.5-flash-lite',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: request
-                        }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 2500
-                });
+            const generationTime = Date.now() - startTime;
+            const text = this.extractResponseContent(response);
+            const prData = this.parsePullRequest(text);
 
-                const generationTime = Date.now() - startTime;
-                const text = this.extractResponseContent(response);
-                const prData = this.parsePullRequest(text);
-
-                if (prData && prData.title) {
-                    this.logger.success(`✅ Pull request description generated successfully on attempt ${attempt} (${generationTime}ms)`);
-                    return prData;
-                }
-
-                throw new Error('Generated pull request could not be parsed or was empty');
-
-            } catch (error) {
-                this.logger.warn(`⚠️  Attempt ${attempt} failed: ${error.message}`);
-
-                if (attempt === this.maxRetries) {
-                    throw new Error(`Failed to generate pull request description after ${this.maxRetries} attempts. Last error: ${error.message}`);
-                }
-
-                const delay = Math.pow(2, attempt) * 1000;
-                await new Promise(resolve => setTimeout(resolve, delay));
+            if (prData && prData.title) {
+                this.logger.success(`✅ Pull request description generated successfully on attempt ${attempt} (${generationTime}ms)`);
+                return prData;
             }
-        }
+
+            throw new Error('Generated pull request could not be parsed or was empty');
+        });
     }
 
     buildPullRequestRequest(selectedCommits, repoName, additionalContext = null) {

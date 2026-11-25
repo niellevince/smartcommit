@@ -426,7 +426,7 @@ class SmartCommit {
                     }
 
                 } catch (error) {
-                    if (attempts >= maxAttempts) {
+                    if (error.retryable === false || attempts >= maxAttempts) {
                         throw error;
                     }
                     console.log(`⚠️  Attempt ${attempts} failed: ${error.message}`);
@@ -569,6 +569,15 @@ class SmartCommit {
                 await context.initialize(this.configManager, this.gitManager, this.historyManager);
             }
             this.applyContextToAIManager(context);
+
+            console.log('🔍 Checking OpenRouter credit balance...');
+            try {
+                const keyStatus = await this.aiManager.getKeyStatus(context.config.OPENROUTER_API_KEY);
+                console.log(this.aiManager.formatKeyStatus(keyStatus));
+            } catch (error) {
+                console.log(`⚠️  Could not read credit balance: ${error.message}`);
+            }
+            console.log();
 
             console.log('🔍 Testing OpenRouter API connection...');
             console.log(`🤖 Model: ${context.getModel()}`);
